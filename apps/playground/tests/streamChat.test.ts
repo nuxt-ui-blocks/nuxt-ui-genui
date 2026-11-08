@@ -23,6 +23,33 @@ describe('streamChat', () => {
     vi.unstubAllGlobals()
   })
 
+  it('parses frames split mid-frame across reads via a manual ReadableStream', async () => {
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        // Split mid-`data:` line, then end the second chunk mid-`\n\n` delimiter.
+        controller.enqueue(encoder.encode('event: chunk\ndata: {"tex'))
+        controller.enqueue(encoder.encode('t":"root"}\n'))
+        controller.enqueue(encoder.encode('\nevent: done\ndata: {"ok":true,"ui":"root = SalesDashboard()","meta":{"mode":"chat","model":"gpt-test","validated":true}}\n\n'))
+        controller.close()
+      }
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }))
+    )
+
+    const events: any[] = []
+    await streamChat(
+      { messages: [{ role: 'user', content: 'dash' }] },
+      (e) => events.push(e)
+    )
+    expect(events.map((e) => e.type)).toEqual(['chunk', 'done'])
+    expect(events[0].text).toBe('root')
+    expect(events[1].ui).toBe('root = SalesDashboard()')
+    vi.unstubAllGlobals()
+  })
+
   it('throws with the server message on non-200 responses', async () => {
     vi.stubGlobal(
       'fetch',

@@ -20,6 +20,7 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.152",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.5.1",
     "happy-dom": "^21.0.4",

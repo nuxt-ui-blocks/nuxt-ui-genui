@@ -6,7 +6,7 @@ export const ChatRequestSchema = z.object({
   messages: z
     .array(
       z.object({
-        role: z.enum(['system', 'user', 'assistant']),
+        role: z.enum(['user', 'assistant']),
         content: z.string().min(1)
       })
     )
@@ -153,8 +153,7 @@ export async function generateUi(
       const result = await generateText({
         model: openai(modelName),
         system,
-        messages,
-        allowSystemInMessages: true
+        messages
       })
       return { text: result.text }
     })

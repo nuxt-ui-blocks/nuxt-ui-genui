@@ -12,7 +12,7 @@ Copy-Item .env.example apps/playground/.env  # then set OPENAI_API_KEY and OPENA
 pnpm --filter nuxt-ui-genui-playground dev
 ```
 
-Open the local URL printed by Nuxt. The chat client defaults to `/api/genui/chat`, which calls OpenAI through the Vercel AI SDK and requires the env vars below.
+Open the local URL printed by Nuxt. The chat client defaults to `/api/genui/chat`, which streams OpenUI Lang over an owned SSE channel (h3 `createEventStream`) using the Vercel AI SDK and OpenAI, and requires the env vars below.
 
 **Offline fallback:** `/api/genui/demo` works without any keys — it returns a fixed `SalesDashboard` as OpenUI Lang. The client's default transport is `/api/genui/chat`, which does require the keys; without them you get HTTP 500.
 
@@ -33,13 +33,16 @@ pnpm test
 pnpm build
 ```
 
+Streaming is verified manually against a running server (`pnpm --filter nuxt-ui-genui-playground dev`); there is no automated live e2e.
+
 ## Repository structure
 
 ```text
 apps/
   playground/                 Nuxt 4 playground app (private)
     app/                      SFCs, composables, pages
-    server/api/genui/         /api/genui/chat (model-backed) · /api/genui/demo (offline)
+    app/utils/streamChat.ts   Owned-SSE stream reader for /api/genui/chat (Vue-free)
+    server/api/genui/         /api/genui/chat (model-backed, streaming) · /api/genui/demo (offline)
     server/utils/genuiAdapter.ts  Vercel AI SDK + OpenAI adapter, boundary validation
     app/genui/library.ts    Client-only OpenUI library (genuiLibrary)
     tests/                    import-boundary, adapter, component tests

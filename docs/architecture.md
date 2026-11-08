@@ -52,11 +52,11 @@ Enforced by `apps/playground/tests/import-boundary.test.ts`: neither the core pa
 The core defines a provider-agnostic adapter boundary: `GenUIAdapterInput` / `GenUIAdapterMessage` / `GenUIModelAdapter` (see `packages/core/src/types.ts`). The first and only implementation lives **in the playground only** (`apps/playground/server/utils/genuiAdapter.ts`): Vercel AI SDK (`ai` + `@ai-sdk/openai`) with OpenAI.
 
 - `OPENAI_API_KEY` and `OPENAI_MODEL` are required; there is no default model. Missing either throws `AdapterConfigError` → HTTP 500.
-- Non-streaming `generateText` call.
+- Progressive OpenUI Lang over an owned SSE channel (h3 `createEventStream`). `chunk` frames carry raw Lang text; the terminal frame is either `done` — `{"ok":true,"ui":<canonical fence-stripped ui>,"meta":{mode:'chat',model,validated:true}}` — or `error` — `{"ok":false,"issues":[...],"reason":"provider"|"boundary"|"config"}`.
 - The system prompt is hand-built (`buildSystemPrompt`), constraining the model to a single registered component.
-- Model output passes boundary validation (`validateUi`) before it reaches the client: it must be a single `root = SalesDashboard(...)` statement with exactly 4 positional JSON arguments that parse against `SalesDashboardSchema`.
-- Error model: 400 (invalid request body), 500 (missing config / adapter config error), 502 (provider request failed), 422 (model output failed validation).
-- There is no repair, retry, or streaming.
+- Model output passes boundary validation (`validateUi`) at stream completion, before the `done` frame is sent: it must be a single `root = SalesDashboard(...)` statement with exactly 4 positional JSON arguments that parse against `SalesDashboardSchema`. `validateUi` remains authoritative; there is no repair or retry — invalid output ends the stream with an `error` frame (`reason: "boundary"`).
+- Pre-stream failures are plain `createError` responses, never SSE: 400 (invalid request body, including client-sent `system` messages), 500 (missing config / adapter config error), 502 (provider request failed). Boundary validation failure is reported in-band as the terminal `error` frame (`reason: "boundary"`), not as an HTTP status.
+- The client suppresses render-error banners while a turn is `submitted`/`streaming`; render errors surface only once the stream settles.
 
 `/api/genui/demo` remains as a deterministic offline route that returns a fixed `SalesDashboard` without any model call; `/api/genui/chat` is the client's default transport.
 
@@ -73,9 +73,8 @@ Model output is untrusted until it passes the boundary (`validateUi` + Zod parse
 
 Nuxt 4 · Nuxt UI 4 · Vue 3.5+ · Zod 4 (`zod/v4`) · `@openuidev/vue-lang` 0.4.x. Node.js ≥22.18 (CI: Node 24), pnpm 9+. Packages are `private`; nothing is published.
 
-## Out of scope (Phases 2+)
+## Out of scope (future phases)
 
-- Streaming (token-by-token rendering)
 - Agentic tools / tool calling
 - npm publishing and release workflows
 - Additional packages beyond `core` and the `playground` app

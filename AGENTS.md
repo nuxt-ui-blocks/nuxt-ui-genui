@@ -34,7 +34,7 @@ This repo lives at `E:\projects\javascript\nuxt-ui-blocks\nuxt-ui-genui`. The se
 - `POST /api/genui/chat` is the default (model-backed) and **streams OpenUI Lang over owned SSE** (h3 `createEventStream`). `chunk` frames carry raw Lang text; the terminal frame is `done` (`{"ok":true,"ui":<canonical fence-stripped ui>,"meta":{mode:'chat',model,validated:true}}`) or `error` (`{"ok":false,"issues":[...],"reason":"provider"|"boundary"|"config"}`). `/api/genui/demo` is unchanged - the offline deterministic fallback (non-streaming).
 - Client system messages are rejected with 400 (role enum is `user`|`assistant`); the server system prompt is authoritative. `allowSystemInMessages` is forbidden.
 - Nuxt reads `.env` **only from the playground rootDir** -> put env in **`apps/playground/.env`** (copy root `.env.example`; gitignored). A root `.env` is NOT read by the playground.
-- No defaults for `OPENAI_API_KEY` / `OPENAI_MODEL`. For OpenAI-compatible gateways set `OPENAI_BASE_URL` (see README env table). A local demo gateway (non-production, not in repo) has been used with `gemini-3.5-flash-lite`; never commit gateway credentials.
+- No defaults for `OPENAI_API_KEY` / `OPENAI_MODEL`. For OpenAI-compatible gateways set `OPENAI_BASE_URL` (see README env table). A local OpenAI-compatible gateway (non-production, not in repo) has been used to exercise the streaming path; never commit gateway credentials.
 - Chat adapter: `apps/playground/server/utils/genuiAdapter.ts` - Vercel AI SDK (`ai` v7) `streamText`; system prompt requires a literal `root =` prefix; the adapter's local `validateUi` (defined in the file) is authoritative at stream completion; pre-stream failures are plain `createError` responses - 400 (bad request) / 500 (config missing) / 502 (provider failure) - and never SSE; validation failure at stream end is the in-band `error` frame (`reason: "boundary"`). No repair or retry - invalid output ends the stream with an `error` frame. The client suppresses render-error banners while a turn is `submitted`/`streaming`.
 - `@iconify-json/lucide` is a playground devDependency (needed for icon resolution).
 
@@ -53,9 +53,9 @@ This repo lives at `E:\projects\javascript\nuxt-ui-blocks\nuxt-ui-genui`. The se
 ## Spec-driven workflow (superpowers)
 
 - `docs/superpowers/specs/` is the source of truth for in-flight work. Follow the approved spec; don't improvise scope.
-- Current status: Phase 1 (chat adapter) and Phase 2 (SSE streaming transport) are committed and green. The Phase 2 spec `docs/superpowers/specs/2026-11-08-nuxt-ui-genui-phase-2-design.md` remains untracked by design (specs/plans are not committed).
+- Current status: Phase 1 (chat adapter) and Phase 2 (SSE streaming transport) are implemented. Both specs and plans are committed under `docs/superpowers/{specs,plans}/` (Phase 2: `2026-11-08-nuxt-ui-genui-phase-2-design.md` + `2026-11-08-nuxt-ui-genui-phase-2-plan.md`).
 
 ## Repo status
 
 - Packages private (`nuxt-ui-genui-core` v0.0.0), publishing deferred; repo is public MIT.
-- CI green on `main` (`efe0f80` latest). Reference docs: `README.md` (env vars, structure, license), `docs/architecture.md` (decisions/boundaries).
+- CI runs on push/PR to `main`. Phase 2 work is committed on local `main` (11 commits ahead of `origin/main`) and is unpushed — CI status there is unverified until it lands. Reference docs: `README.md` (env vars, structure, license), `docs/architecture.md` (decisions/boundaries).

@@ -1,72 +1,112 @@
 import type { ActionEvent } from '@openuidev/vue-lang'
+import type { UIMessage, TextUIPart, DataUIPart } from 'ai'
+import { streamChat } from '../utils/streamChat'
 
-type ChatMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  text: string
-  ui?: string
+export type GenUIChatStatus = 'submitted' | 'streaming' | 'ready' | 'error'
+
+type GenUIDataParts = { genui: { ui: string } }
+export type GenUIChatMessage = UIMessage<unknown, GenUIDataParts>
+
+const WELCOME =
+  'Ask me to create a dashboard. I use OpenAI to generate the UI — /api/genui/demo is kept as an offline deterministic demo.'
+const GENERATED = 'I generated a dashboard interface from the request.'
+const FAILED = 'I could not generate the interface.'
+
+function textOf(message: GenUIChatMessage): string {
+  return message.parts
+    .filter((p): p is TextUIPart => p.type === 'text')
+    .map((p) => p.text)
+    .join('\n')
 }
 
 export function useGenUIChat() {
-  const messages = ref<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      text: 'Ask me to create a dashboard. I use OpenAI to generate the UI — /api/genui/demo is kept as an offline deterministic demo.'
-    }
+  const messages = ref<GenUIChatMessage[]>([
+    { id: 'welcome', role: 'assistant', parts: [{ type: 'text', text: WELCOME }] }
   ])
-  const isStreaming = ref(false)
+  const status = ref<GenUIChatStatus>('ready')
   const error = ref<string | null>(null)
+  const renderError = ref<string | null>(null)
+  const isStreaming = computed(() => status.value === 'submitted' || status.value === 'streaming')
+
+  function findAssistant(id: string): GenUIChatMessage | undefined {
+    return messages.value.find((m) => m.id === id)
+  }
 
   async function sendMessage(prompt: string) {
     const content = prompt.trim()
     if (!content || isStreaming.value) return
 
     error.value = null
-    // Snapshot prior turns before pushing the new user/assistant entries, so the
-    // request carries history + the new user turn exactly once.
+    renderError.value = null // F7 — clear on every turn, including action-triggered ones
+
     const history = messages.value
       .filter((m) => m.id !== 'welcome')
-      .map((m) => ({ role: m.role, content: m.text }))
-    messages.value.push({ id: crypto.randomUUID(), role: 'user', text: content })
-    isStreaming.value = true
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: textOf(m) }))
 
-    const assistant: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      text: 'I generated a dashboard interface from the request.',
-      ui: ''
+    messages.value.push({ id: crypto.randomUUID(), role: 'user', parts: [{ type: 'text', text: content }] })
+
+    const assistantId = crypto.randomUUID()
+    messages.value.push({ id: assistantId, role: 'assistant', parts: [{ type: 'text', text: GENERATED }] })
+    status.value = 'submitted'
+
+    const assistant = findAssistant(assistantId)!
+    let genuiIndex = -1
+    let uiBuffer = ''
+
+    const writeUi = (ui: string) => {
+      const dataPart = { type: 'data-genui', data: { ui } } as DataUIPart<GenUIDataParts>
+      if (genuiIndex === -1) {
+        assistant.parts = [...assistant.parts, dataPart]
+        genuiIndex = assistant.parts.length - 1
+      } else {
+        const next = [...assistant.parts]
+        next[genuiIndex] = dataPart
+        assistant.parts = next
+      }
     }
-    messages.value.push(assistant)
+
+    const failWith = (message: string) => {
+      status.value = 'error'
+      error.value = message
+      assistant.parts = assistant.parts.map((p) =>
+        p.type === 'text' ? { ...p, text: FAILED } : p
+      )
+    }
 
     try {
-      const result = await $fetch<{ ui: string }>('/api/genui/chat', {
-        method: 'POST',
-        body: { messages: [...history, { role: 'user', content }] }
-      })
-      assistant.ui = result.ui
+      await streamChat(
+        { messages: [...history, { role: 'user', content }] },
+        (event) => {
+          if (event.type === 'chunk') {
+            uiBuffer += event.text
+            if (status.value === 'submitted') status.value = 'streaming'
+            writeUi(uiBuffer)
+          } else if (event.type === 'done') {
+            writeUi(event.ui) // canonical, fence-stripped Lang
+            status.value = 'ready'
+          } else {
+            failWith(
+              event.reason === 'boundary'
+                ? `Model output failed validation:\n${event.issues.join('\n')}`
+                : event.issues[0] ?? 'The model provider request failed.'
+            )
+          }
+        }
+      )
     } catch (cause) {
-      // h3 error bodies are `{ error: true, statusCode, statusMessage, message, data? }`;
-      // with `data` present, the route's detail nests at `cause.data.data`.
-      const data = (cause as { data?: { error?: unknown; statusMessage?: string; message?: string; data?: { error?: string } } } | null)?.data
-      error.value =
-        data?.data?.error ??
-        data?.statusMessage ??
-        data?.message ??
-        (typeof data?.error === 'string' ? data.error : undefined) ??
-        (cause instanceof Error ? cause.message : 'Generation failed.')
-      assistant.text = 'I could not generate the interface.'
-    } finally {
-      isStreaming.value = false
+      failWith(cause instanceof Error ? cause.message : 'Generation failed.')
     }
   }
 
   function handleAction(event: ActionEvent) {
-    // OpenUI continuation actions are converted into normal chat turns.
     if (event.humanFriendlyMessage) {
       void sendMessage(event.humanFriendlyMessage)
     }
   }
 
-  return { messages, isStreaming, error, sendMessage, handleAction }
+  function setRenderError(message: string | null) {
+    renderError.value = message
+  }
+
+  return { messages, status, isStreaming, error, renderError, sendMessage, handleAction, setRenderError }
 }

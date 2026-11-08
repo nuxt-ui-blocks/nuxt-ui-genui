@@ -28,7 +28,8 @@ Nuxt UI GenUI — experimental Nuxt UI component library for OpenUI. pnpm monore
 
 - `@openuidev/vue-lang` is 0.4.x; **no Lang 1.0 parity**. Do not install `@openuidev/lang-core` ≥1.x (React-only Lang 1.0). Phase 1 uses no lang-core at all.
 - Strict allowlist; never evaluate model-generated JS/Vue. UI actions are requests; privileged ops must be server-authorized.
-- `/api/genui/demo` = deterministic offline mode; `/api/genui/chat` (Phase 1b) = model-backed transport, 400/500/502/422 error model.
+- `/api/genui/chat` is the client's default transport (Phase 1b) — model-backed, requires `OPENAI_API_KEY`/`OPENAI_MODEL`; `/api/genui/demo` is the offline deterministic route (no keys needed).
+- The server adapter lives at `apps/playground/server/utils/genuiAdapter.ts` (Vercel AI SDK + OpenAI, non-streaming `generateText`, hand-built system prompt, boundary validation). Error model: 400/500/502/422. No streaming, no repair, no retry.
 
 ## Repo status
 

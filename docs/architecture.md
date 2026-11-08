@@ -2,92 +2,83 @@
 
 ## Product boundary
 
-The project ships two experiences on one engine:
+`nuxt-ui-genui` is an experimental Nuxt UI component library for OpenUI. The repository is a pnpm workspace with two packages: `apps/playground` (the Nuxt 4 playground app) and `packages/core` (`nuxt-ui-genui-core`, framework-independent contracts). Exactly one component is registered today — `SalesDashboard` — shipped as the first vertical slice.
 
-1. **Generative UI runtime** — component registry, schema/prompt contract, streamed OpenUI Lang parsing/rendering, action bridge and transport-neutral types.
-2. **Chat UI** — optional conversational components and composables that host generated UI as one assistant message content type.
-
-Neither layer owns the user's business logic or privileged operations.
+This is not production-ready. There is no published package, no stable API surface, and no commitment to backwards compatibility yet.
 
 ## Dependency direction
 
 ```text
-Application
-  ├── Chat UI (optional)
-  │     └── Core public API
-  ├── Nuxt integration
-  │     ├── Core public API
-  │     └── OpenUI Vue adapter
-  ├── Nuxt UI component registry
-  │     ├── Core public API
-  │     └── @nuxt/ui
-  └── Provider adapter (optional)
-        └── Core transport contract
+apps/playground (Nuxt 4 app)
+  ├── server routes & server utils ──► nuxt-ui-genui-core
+  ├── shared/genui/library.ts (client-only) ──► nuxt-ui-genui-core + Vue SFCs
+  └── app/ SFCs & composables
+        └── shared/genui/library.ts
+
+packages/core (nuxt-ui-genui-core)
+  └── zod only — no Nuxt, no Vue, no Nuxt UI, no @openuidev/vue-lang
 ```
 
-The core must not depend on Nuxt, Nuxt UI, Vue SFCs, or a specific model vendor. The Nuxt integration may depend on Vue and the OpenUI Vue adapter. The Nuxt UI registry is an optional preset, not a hard requirement for custom registries.
+`apps/playground` depends on `nuxt-ui-genui-core` (`workspace:*`). The core depends on `zod` only. Server and shared code may import core; they must never import the client library (`shared/genui/library.ts`), Vue SFCs, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`. The client library and all SFCs are client-only.
 
 ## OpenUI boundary
 
-Use `@openuidev/vue-lang` internally for the first implementation. Wrap its `createLibrary`, `defineComponent`, `Renderer`, `ActionEvent`, and error types behind project-owned interfaces. Do not expose the upstream library object as the long-term public API.
+OpenUI stays behind project-owned APIs: the client-side `genuiLibrary` and the `/api/genui/chat` route. The upstream renderer (`@openuidev/vue-lang`) is wrapped, not exposed as a permanent public contract.
 
-The current Vue integration is documented as 0.4.x. It supports schema-driven Vue components, prompt generation, streaming response rendering, action callbacks, state updates, query/tool providers and parse errors. It does not yet expose all OpenUI Lang 1.0 features documented for the React renderer. Avoid depending on unavailable features.
+- Strict component allowlist; only registered components may render.
+- Model-generated JavaScript, HTML templates, and Vue source are never evaluated.
+- The wire format is OpenUI Lang positional arguments in **Zod property order** (`title, description, metrics, orders`). Changing schema order/shape breaks the wire format; the order is enforced by `packages/core/tests/schemas.test.ts`.
+- `@openuidev/vue-lang` stays on 0.4.x. It does not provide OpenUI Lang 1.0 parity, and this project must not assume it.
+- `@openuidev/lang-core` is not used in Phase 1.
 
 ## Registry model
 
-Each registered component has:
+`componentSpecs` in `packages/core/src/specs.ts` is the single source of prompt/registry metadata (name, description, Zod props schema).
 
-- stable public name;
-- human-readable description for model prompting;
-- Zod input schema;
-- Vue renderer (client-side only);
-- optional category and capability metadata;
-- optional action declarations, subject to server authorization.
+- The client library (`apps/playground/shared/genui/library.ts`) spreads the specs and attaches the matching Vue SFCs via `createLibrary`/`defineComponent`.
+- The server system prompt (`apps/playground/server/utils/genuiAdapter.ts`, `buildSystemPrompt`) is hand-built from the same specs and the `SalesDashboardSchema` shape.
+- Because both sides derive from core, the prompt, the registry, and the renderer cannot drift apart.
 
-The first MVP uses a single `SalesDashboard` root component as a vertical slice. The generic registry API is deliberately deferred until the integration has a passing test.
+## Server–client split
 
-## Server/client split
+Enforced by `apps/playground/tests/import-boundary.test.ts`: neither the core package nor the playground server may import Vue SFCs, `shared/genui/library.ts`, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`.
 
-- Shared schemas and serializable component metadata may be imported by both server and client.
-- Vue SFCs and the OpenUI Vue `Renderer` belong in the client bundle.
-- Nitro routes must not import the Vue library or any `.vue` file.
-- Server-side prompt generation should use the serializable schema definitions and `@openuidev/lang-core` when the real model adapter is introduced.
+- `packages/core/src/schemas.ts`, `specs.ts`, and `types.ts` are serializable and safe for server + client.
+- Vue SFCs and the OpenUI `Renderer` belong in the client bundle.
+- Nitro routes/utils import core only.
 
 ## Model transport
 
-Define a project-owned adapter contract rather than coupling the core to Vercel AI SDK. The first adapter can use Vercel AI SDK, while direct provider integrations remain possible.
+The core defines a provider-agnostic adapter boundary: `GenUIAdapterInput` / `GenUIAdapterMessage` / `GenUIModelAdapter` (see `packages/core/src/types.ts`). The first and only implementation lives **in the playground only** (`apps/playground/server/utils/genuiAdapter.ts`): Vercel AI SDK (`ai` + `@ai-sdk/openai`) with OpenAI.
 
-A transport should deliver:
+- `OPENAI_API_KEY` and `OPENAI_MODEL` are required; there is no default model. Missing either throws `AdapterConfigError` → HTTP 500.
+- Non-streaming `generateText` call.
+- The system prompt is hand-built (`buildSystemPrompt`), constraining the model to a single registered component.
+- Model output passes boundary validation (`validateUi`) before it reaches the client: it must be a single `root = SalesDashboard(...)` statement with exactly 4 positional JSON arguments that parse against `SalesDashboardSchema`.
+- Error model: 400 (invalid request body), 500 (missing config / adapter config error), 502 (provider request failed), 422 (model output failed validation).
+- There is no repair, retry, or streaming.
 
-- assistant text/OpenUI Lang chunks;
-- completion and abort signals;
-- normalized provider errors;
-- optional usage and request metadata.
-
-The renderer consumes accumulated OpenUI Lang text. The chat layer owns message lifecycle, cancellation and conversation history. The transport must not import Vue components.
+`/api/genui/demo` remains as a deterministic offline route that returns a fixed `SalesDashboard` without any model call; `/api/genui/chat` is the client's default transport.
 
 ## Interaction and security
 
-Generated UI is presentation plus structured intent, not executable code.
+Model output is untrusted until it passes the boundary (`validateUi` + Zod parse). Rendering happens only through the strict allowlist; props are schema-validated before render.
 
-- Never evaluate generated JavaScript, HTML templates or Vue source.
-- Only components in the active registry can render.
-- Validate all model-provided props against their schemas.
-- Local presentation state may be handled in the client.
-- Conversational actions become ordinary user turns.
-- Application mutations go through server-side tools with authentication, authorization, validation, idempotency where appropriate, and explicit confirmation for destructive/high-impact actions.
+- UI actions are requests, not commands. Privileged operations require server-side authorization.
+- The system prompt constrains output to a single registered component — prompt-injection resistance is a design goal, not a guarantee, and model output is still validated.
+- Destructive operations will require explicit confirmation (future phases).
 - Tool credentials and privileged logic never enter the browser bundle.
 
 ## Compatibility
 
-Initial support target: Nuxt 4, Nuxt UI 4, Vue 3.5+, Zod 4, OpenUI Vue Lang 0.4.x. Keep peer dependencies and adapters narrow so future upstream changes are isolated.
+Nuxt 4 · Nuxt UI 4 · Vue 3.5+ · Zod 4 (`zod/v4`) · `@openuidev/vue-lang` 0.4.x. Node.js 20.19+, pnpm 9+. Packages are `private`; nothing is published.
 
-## MVP exit criteria
+## Out of scope (Phases 2+)
 
-1. A Nuxt 4 app starts with Nuxt UI 4 and the OpenUI Vue renderer.
-2. A schema-backed component is rendered from valid OpenUI Lang.
-3. Invalid component names and invalid props produce visible, non-fatal errors.
-4. The component registry is allowlisted and supports at least one user-defined component.
-5. A continuation action is forwarded into the chat composable.
-6. A server route can provide the prompt/schema without importing Vue SFCs.
-7. At least one integration test covers the renderer and one test covers the server/client import boundary.
+- Streaming (token-by-token rendering)
+- Agentic tools / tool calling
+- npm publishing and release workflows
+- Additional packages beyond `core` and the `playground` app
+- Vue/Vite/Inertia entrypoints outside the Nuxt integration
+- A docs site
+- Motion integration (nuxt-motion-block consuming GenUI later)

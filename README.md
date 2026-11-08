@@ -1,67 +1,56 @@
-# Nuxt UI GenUI — MVP scaffold
+# Nuxt UI GenUI
 
-An experimental Nuxt 4 + Nuxt UI 4 generative UI framework using OpenUI Lang's Vue renderer.
+> **Status: experimental — not production-ready.** One registered component (`SalesDashboard`), no published packages, no stable API. Do not use in production.
 
-## Current scope
+An experimental Nuxt UI component library for OpenUI. A pnpm monorepo with `apps/playground` (Nuxt 4 demo app) and `packages/core` (`nuxt-ui-genui-core`, framework-independent contracts).
 
-- OpenUI Lang Vue renderer integration (`@openuidev/vue-lang`).
-- A small Nuxt UI-backed `SalesDashboard` component.
-- Zod schemas kept in a serializable shared module.
-- A chat composable with a transport boundary.
-- A deterministic demo API route so the UI can be tested without an API key.
+## Quickstart
 
-**Important:** the demo route is not an LLM. It returns a fixed dashboard as OpenUI Lang text. The provider adapter and true token-by-token streaming are the next implementation layer. Do not treat this scaffold as production-ready.
-
-## Requirements
-
-- Node.js 20.19+ (or a compatible current LTS)
-- pnpm 9+
-
-## Run
-
-```bash
+```powershell
 pnpm install
-pnpm dev
+Copy-Item .env.example .env  # then set OPENAI_API_KEY and OPENAI_MODEL
+pnpm --filter nuxt-ui-genui-playground dev
 ```
 
-Open the local URL printed by Nuxt.
+Open the local URL printed by Nuxt. The chat client defaults to `/api/genui/chat`, which calls OpenAI through the Vercel AI SDK and requires the env vars below.
 
-## Architecture
+**Offline fallback:** `/api/genui/demo` works without any keys — it returns a fixed `SalesDashboard` as OpenUI Lang. The client's default transport is `/api/genui/chat`, which does require the keys; without them you get HTTP 500.
+
+## Environment variables
+
+| Variable         | Required | Notes                          |
+| ---------------- | -------- | ------------------------------ |
+| `OPENAI_API_KEY` | yes      | No default; request fails without it |
+| `OPENAI_MODEL`   | yes      | No default model is provided   |
+
+Copy `.env.example` to `.env` and fill in both. `.env` is gitignored.
+
+## Verification
+
+```powershell
+pnpm typecheck
+pnpm test
+```
+
+## Repository structure
 
 ```text
-app/
-  components/genui/     Vue renderers backed by Nuxt UI
-  composables/          Chat state and transport orchestration
-  pages/                Playground application
-shared/genui/
-  schemas.ts            Zod schemas safe to import on server and client
-  library.ts            OpenUI Vue library (client-only SFC dependency)
-server/api/
-  genui/demo.post.ts    Deterministic demo transport
+apps/
+  playground/                 Nuxt 4 playground app (private)
+    app/                      SFCs, composables, pages
+    server/api/genui/         /api/genui/chat (model-backed) · /api/genui/demo (offline)
+    server/utils/genuiAdapter.ts  Vercel AI SDK + OpenAI adapter, boundary validation
+    shared/genui/library.ts   Client-only OpenUI library (genuiLibrary)
+    tests/                    import-boundary, adapter, component tests
+packages/
+  core/                       nuxt-ui-genui-core — Zod schemas, types, component specs (zod-only)
+docs/
+  architecture.md             Architecture decisions and boundaries
+.github/workflows/ci.yml      Frozen install + typecheck + test
 ```
 
-The server route imports only `shared/genui/schemas.ts`; it must not import `library.ts` or Vue SFCs. In a real provider integration, generate the system prompt server-side from the same serializable component definitions using `@openuidev/lang-core`, then stream model output to the client.
+See [docs/architecture.md](docs/architecture.md) for the architecture decisions and boundaries.
 
-## Key implementation constraints
+## License
 
-1. Keep OpenUI behind our own public APIs; do not expose its renderer types as the framework's permanent contract.
-2. Keep schemas serializable and shared. Keep Vue component imports in the client bundle.
-3. Use a strict component allowlist. Never evaluate model-generated JavaScript or Vue templates.
-4. Treat UI actions as requests. Privileged operations must be authorized and validated by server-side tools.
-5. The OpenUI Vue renderer is currently 0.4.x. Its API/features do not fully match the React renderer's OpenUI Lang 1.0 feature set.
-
-## Current MVP limitations
-
-- The demo API returns a single fixed dashboard; prompt content only appears in the description.
-- The example is not yet true token streaming.
-- No model provider or AI SDK is installed yet.
-- The `SalesDashboard` schema is the first vertical slice, not the final generic registry API.
-- Automated tests and package extraction into the planned monorepo are not yet included.
-
-## Planned next engineering milestones
-
-1. Verify the OpenUI component schema syntax against the pinned Vue Lang version and add a renderer integration test.
-2. Extract `core`, `nuxt`, `components`, `chat`, and `ai-sdk` packages into a pnpm workspace once the first vertical slice is stable.
-3. Add a provider-neutral `GenUIModelAdapter` contract and a Vercel AI SDK adapter.
-4. Implement true incremental OpenUI Lang streaming and parse/error states.
-5. Add registry extension, component permissions, action confirmation, and examples.
+MIT — see [LICENSE](LICENSE).

@@ -6,19 +6,9 @@
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/nuxt-ui-blocks/nuxt-ui-genui.git" },
   "scripts": {
-    "dev": "nuxt dev",
-    "build": "nuxt build",
-    "typecheck": "nuxt typecheck",
-    "postinstall": "nuxt prepare"
-  },
-  "dependencies": {
-    "@nuxt/ui": "^4.12.0",
-    "@openuidev/vue-lang": "^0.4.1",
-    "nuxt": "^4.2.0",
-    "zod": "^4.1.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.0",
-    "vue-tsc": "^3.0.0"
+    "dev": "pnpm --filter nuxt-ui-genui-playground dev",
+    "build": "pnpm --filter nuxt-ui-genui-playground build",
+    "typecheck": "pnpm --filter nuxt-ui-genui-playground typecheck",
+    "test": "pnpm -r test"
   }
 }

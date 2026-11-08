@@ -33,7 +33,15 @@ importers:
         specifier: ^3.0.0
         version: 3.3.14(typescript@5.9.3)
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.1.0
+        version: 4.6.7
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
 
 packages:
 

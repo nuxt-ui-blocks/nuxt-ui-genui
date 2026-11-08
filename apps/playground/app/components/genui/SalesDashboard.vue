@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RenderNodeResult } from '@openuidev/vue-lang'
-import type { SalesDashboardProps } from '#shared/genui/schemas'
+import type { SalesDashboardProps } from 'nuxt-ui-genui-core'
 
 const { props: dashboard } = defineProps<{ props: SalesDashboardProps; renderNode: (value: unknown) => RenderNodeResult }>()
 

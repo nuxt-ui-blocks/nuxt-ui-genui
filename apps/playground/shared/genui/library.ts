@@ -1,6 +1,6 @@
 import { createLibrary, defineComponent } from '@openuidev/vue-lang'
 import SalesDashboard from '~/components/genui/SalesDashboard.vue'
-import { SalesDashboardSchema } from './schemas'
+import { SalesDashboardSchema } from 'nuxt-ui-genui-core'
 
 /**
  * The client-side OpenUI library. The server imports schemas.ts only and never

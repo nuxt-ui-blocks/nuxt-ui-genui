@@ -1,4 +1,4 @@
-import { SalesDashboardSchema } from '../../../shared/genui/schemas'
+import { SalesDashboardSchema } from 'nuxt-ui-genui-core'
 
 /**
  * Deterministic demo transport. Replace this handler with a model adapter.

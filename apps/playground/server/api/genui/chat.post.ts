@@ -48,6 +48,7 @@ export default defineEventHandler(async (event) => {
             event: 'error',
             data: JSON.stringify({ ok: false, issues: evt.issues, reason: evt.reason })
           })
+          break
         }
       }
     } catch {
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event) => {
     } finally {
       await eventStream.close()
     }
-  })()
+  })().catch(() => {})
 
   return eventStream.send()
 })

@@ -20,8 +20,8 @@ Nuxt UI GenUI — experimental Nuxt UI component library for OpenUI. pnpm monore
 ## Critical boundaries (do not break)
 
 - Wire format = positional OpenUI Lang args in **Zod property order** (`title, description, metrics, orders`). Enforced by `packages/core/tests/schemas.test.ts` key-order test.
-- Server/shared code must never import Vue SFCs, `#shared/genui/library`, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`. Enforced by `apps/playground/tests/import-boundary.test.ts`.
-- Client-only: `apps/playground/shared/genui/library.ts` (creates `genuiLibrary` via `createLibrary`/`defineComponent`) and all `.vue` SFCs.
+- Server/shared code must never import Vue SFCs, `~/genui/library`, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`. Enforced by `apps/playground/tests/import-boundary.test.ts`.
+- Client-only: `apps/playground/app/genui/library.ts` (creates `genuiLibrary` via `createLibrary`/`defineComponent`) and all `.vue` SFCs.
 - `schemas.ts`/`specs.ts` in core are serializable and safe for server + client.
 
 ## OpenUI
@@ -34,4 +34,4 @@ Nuxt UI GenUI — experimental Nuxt UI component library for OpenUI. pnpm monore
 ## Repo status
 
 - Publishing deferred (no npm publish workflow). Packages are `private`.
-- No lint config yet. CI = frozen install + typecheck + test.
+- No lint config yet. CI = frozen install + typecheck + test + build.

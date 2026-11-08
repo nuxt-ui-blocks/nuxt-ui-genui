@@ -11,15 +11,15 @@ This is not production-ready. There is no published package, no stable API surfa
 ```text
 apps/playground (Nuxt 4 app)
   ├── server routes & server utils ──► nuxt-ui-genui-core
-  ├── shared/genui/library.ts (client-only) ──► nuxt-ui-genui-core + Vue SFCs
+  ├── app/genui/library.ts (client-only) ──► nuxt-ui-genui-core + Vue SFCs
   └── app/ SFCs & composables
-        └── shared/genui/library.ts
+        └── genui/library.ts
 
 packages/core (nuxt-ui-genui-core)
   └── zod only — no Nuxt, no Vue, no Nuxt UI, no @openuidev/vue-lang
 ```
 
-`apps/playground` depends on `nuxt-ui-genui-core` (`workspace:*`). The core depends on `zod` only. Server and shared code may import core; they must never import the client library (`shared/genui/library.ts`), Vue SFCs, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`. The client library and all SFCs are client-only.
+`apps/playground` depends on `nuxt-ui-genui-core` (`workspace:*`). The core depends on `zod` only. Server and shared code may import core; they must never import the client library (`app/genui/library.ts`), Vue SFCs, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`. The client library and all SFCs are client-only.
 
 ## OpenUI boundary
 
@@ -35,13 +35,13 @@ OpenUI stays behind project-owned APIs: the client-side `genuiLibrary` and the `
 
 `componentSpecs` in `packages/core/src/specs.ts` is the single source of prompt/registry metadata (name, description, Zod props schema).
 
-- The client library (`apps/playground/shared/genui/library.ts`) spreads the specs and attaches the matching Vue SFCs via `createLibrary`/`defineComponent`.
+- The client library (`apps/playground/app/genui/library.ts`) spreads the specs and attaches the matching Vue SFCs via `createLibrary`/`defineComponent`.
 - The server system prompt (`apps/playground/server/utils/genuiAdapter.ts`, `buildSystemPrompt`) is hand-built from the same specs and the `SalesDashboardSchema` shape.
 - Because both sides derive from core, the prompt, the registry, and the renderer cannot drift apart.
 
 ## Server–client split
 
-Enforced by `apps/playground/tests/import-boundary.test.ts`: neither the core package nor the playground server may import Vue SFCs, `shared/genui/library.ts`, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`.
+Enforced by `apps/playground/tests/import-boundary.test.ts`: neither the core package nor the playground server may import Vue SFCs, `app/genui/library.ts`, `#components`, `@nuxt/ui`, or `@openuidev/vue-lang`.
 
 - `packages/core/src/schemas.ts`, `specs.ts`, and `types.ts` are serializable and safe for server + client.
 - Vue SFCs and the OpenUI `Renderer` belong in the client bundle.

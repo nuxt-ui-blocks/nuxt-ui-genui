@@ -30,6 +30,7 @@ Copy `.env.example` to `.env` and fill in both. `.env` is gitignored.
 ```powershell
 pnpm typecheck
 pnpm test
+pnpm build
 ```
 
 ## Repository structure
@@ -40,13 +41,13 @@ apps/
     app/                      SFCs, composables, pages
     server/api/genui/         /api/genui/chat (model-backed) · /api/genui/demo (offline)
     server/utils/genuiAdapter.ts  Vercel AI SDK + OpenAI adapter, boundary validation
-    shared/genui/library.ts   Client-only OpenUI library (genuiLibrary)
+    app/genui/library.ts    Client-only OpenUI library (genuiLibrary)
     tests/                    import-boundary, adapter, component tests
 packages/
   core/                       nuxt-ui-genui-core — Zod schemas, types, component specs (zod-only)
 docs/
   architecture.md             Architecture decisions and boundaries
-.github/workflows/ci.yml      Frozen install + typecheck + test
+.github/workflows/ci.yml      Frozen install + typecheck + test + build
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the architecture decisions and boundaries.

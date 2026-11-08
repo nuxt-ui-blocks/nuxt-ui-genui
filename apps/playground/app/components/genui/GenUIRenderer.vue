@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Renderer, type ActionEvent, type OpenUIError } from '@openuidev/vue-lang'
-import { genuiLibrary } from '#shared/genui/library'
+import { genuiLibrary } from '~/genui/library'
 
 const props = defineProps<{
   response: string | null

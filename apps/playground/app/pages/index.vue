@@ -6,7 +6,8 @@ const draft = ref('Create a sales dashboard with revenue, orders, conversion rat
 const renderError = ref<string | null>(null)
 
 function onRenderError(errors: OpenUIError[]) {
-  renderError.value = errors[0]?.message ?? 'Render failed.'
+  // vue-lang calls onError([]) as a "errors cleared" signal — clear the banner.
+  renderError.value = errors.length === 0 ? null : errors[0]?.message ?? 'Render failed.'
 }
 
 async function submit() {

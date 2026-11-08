@@ -1,20 +1,39 @@
 <script setup lang="ts">
 import type { OpenUIError } from '@openuidev/vue-lang'
 
-const { messages, isStreaming, error, sendMessage, handleAction } = useGenUIChat()
-const draft = ref('Create a sales dashboard with revenue, orders, conversion rate, and recent orders.')
-const renderError = ref<string | null>(null)
+type GenUIPart = { type: 'data-genui'; data: { ui: string } }
 
-function onRenderError(errors: OpenUIError[]) {
-  // vue-lang calls onError([]) as a "errors cleared" signal — clear the banner.
-  renderError.value = errors.length === 0 ? null : errors[0]?.message ?? 'Render failed.'
+const {
+  messages,
+  status,
+  error,
+  renderError,
+  isStreaming,
+  sendMessage,
+  handleAction,
+  setRenderError
+} = useGenUIChat()
+
+const draft = ref('Create a sales dashboard with revenue, orders, conversion rate, and recent orders.')
+
+function onRendererError(errors: OpenUIError[]) {
+  // Suppress transient render errors while the stream is in flight;
+  // only the terminal verdict is surfaced.
+  if (isStreaming.value) return
+  const joined = errors
+    .map((e) => (e as { message?: string })?.message ?? String(e))
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+  // errors cleared signal (renderer reports onError([])) → empty → banner cleared.
+  setRenderError(joined || null)
 }
 
-async function submit() {
-  const prompt = draft.value
+async function submit(prompt?: string) {
+  const text = (prompt ?? draft.value).trim()
+  if (!text) return
   draft.value = ''
-  renderError.value = null
-  await sendMessage(prompt)
+  await sendMessage(text)
 }
 </script>
 
@@ -34,31 +53,57 @@ async function submit() {
       <UColorModeButton />
     </header>
 
-    <section class="flex-1 space-y-6">
-      <div v-for="message in messages" :key="message.id" class="space-y-3">
-        <div class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
-          <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm" :class="message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-elevated text-default'">
-            {{ message.text }}
+    <UChatMessages
+      :messages="messages"
+      :status="status"
+      :user="{ icon: 'i-lucide-user' }"
+      :assistant="{ icon: 'i-lucide-bot' }"
+      class="flex-1"
+    >
+      <template #content="{ message }">
+        <template v-for="(part, index) in message.parts" :key="`${message.id}-${part.type}-${index}`">
+          <div v-if="part.type === 'data-genui'" class="w-full">
+            <GenuiGenUIRenderer
+              :response="(part as GenUIPart).data.ui"
+              :is-streaming="isStreaming"
+              @action="handleAction"
+              @error="onRendererError"
+            />
           </div>
-        </div>
-        <div v-if="message.ui !== undefined && message.ui !== ''" class="w-full">
-          <GenuiGenUIRenderer :response="message.ui" :is-streaming="false" @action="handleAction" @error="onRenderError" />
-        </div>
-      </div>
+          <p v-else-if="part.type === 'text'" class="text-sm">{{ part.text }}</p>
+        </template>
+      </template>
+    </UChatMessages>
 
-      <UAlert v-if="error" color="error" variant="subtle" title="Generation error" :description="error" />
-      <UAlert v-if="renderError" color="error" variant="subtle" title="Render error" :description="renderError" />
-    </section>
+    <UChatPrompt
+      v-model="draft"
+      placeholder="Ask me to create a dashboard…"
+      @submit="submit()"
+    >
+      <template #footer>
+        <UChatPromptSubmit :status="status" />
+      </template>
+    </UChatPrompt>
 
-    <form class="mt-8 rounded-2xl border border-default bg-default p-3 shadow-sm" @submit.prevent="submit">
-      <UTextarea v-model="draft" autoresize :rows="2" :maxrows="5" variant="none" placeholder="Describe the interface you want..." class="w-full" />
-      <div class="mt-3 flex items-center justify-between gap-3 border-t border-default pt-3">
-        <p class="text-xs text-muted">Model-backed · OpenUI Lang renderer · offline demo at /api/genui/demo</p>
-        <UButton type="submit" :loading="isStreaming" :disabled="!draft.trim() || isStreaming" trailing-icon="i-lucide-arrow-up">
-          Generate UI
-        </UButton>
-      </div>
-    </form>
-    <p class="mt-3 text-center text-xs text-muted">Do not use generated UI as authorization to perform privileged actions.</p>
+    <UAlert
+      v-if="renderError"
+      class="mt-4"
+      color="error"
+      variant="subtle"
+      title="Render error"
+      :description="renderError"
+    />
+    <UAlert
+      v-if="error"
+      class="mt-4"
+      color="error"
+      variant="subtle"
+      title="Generation error"
+      :description="error"
+    />
+
+    <p class="mt-3 text-center text-xs text-muted">
+      Model-backed · OpenUI Lang renderer · offline demo at /api/genui/demo · Do not use generated UI as authorization to perform privileged actions.
+    </p>
   </main>
 </template>

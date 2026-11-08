@@ -6,6 +6,7 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "typecheck": "nuxt typecheck",
+    "test": "vitest run",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -16,8 +17,12 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "^2.5.1",
+    "happy-dom": "^21.0.4",
     "typescript": "^5.9.0",
     "vitest": "^4.1.12",
+    "vue": "^3.5.45",
     "vue-tsc": "^3.0.0"
   }
 }

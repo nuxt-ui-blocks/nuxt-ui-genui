@@ -36,7 +36,7 @@ Phases 2+ (interactions hardening, chat layer, Motion Block integration, publish
 | Root package | `nuxt-ui-genui` (private until a release decision; name reserved) |
 | Publishing/release automation | Deferred; clean metadata now, no publish workflow |
 | Package manager | pnpm only (9+) |
-| Node | 20.19+ |
+| Node | ≥22.18 (installed tree declares `^22.18.0 || >=24.11.0`; CI uses Node 24) — amended 2026-11-08 per user decision; original 20.19+ floor was contradicted by installed deps (Nuxt + AI SDK) |
 | Lockfile | None in scaffold (deps never installed); Phase 0 generates and commits it; CI uses `--frozen-lockfile` |
 | npm name availability (verified 2026-11-08) | `nuxt-genui`, `nuxt-ui-genui`, `vue-genui`, `genui-vue`, `open-genui` free; `genui` taken; `@nuxt-ui-blocks` scope ownership unproven — unscoped names used |
 | Naming rationale | `nuxt-` prefix is **not** Nuxt-locked: Nuxt UI v4 ships as Nuxt module, Vue/Vite plugin, and Inertia (Laravel/AdonisJS) integration. Final: `nuxt-ui-genui` |

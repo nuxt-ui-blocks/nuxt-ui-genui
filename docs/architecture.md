@@ -71,7 +71,7 @@ Model output is untrusted until it passes the boundary (`validateUi` + Zod parse
 
 ## Compatibility
 
-Nuxt 4 · Nuxt UI 4 · Vue 3.5+ · Zod 4 (`zod/v4`) · `@openuidev/vue-lang` 0.4.x. Node.js 20.19+, pnpm 9+. Packages are `private`; nothing is published.
+Nuxt 4 · Nuxt UI 4 · Vue 3.5+ · Zod 4 (`zod/v4`) · `@openuidev/vue-lang` 0.4.x. Node.js ≥22.18 (CI: Node 24), pnpm 9+. Packages are `private`; nothing is published.
 
 ## Out of scope (Phases 2+)
 

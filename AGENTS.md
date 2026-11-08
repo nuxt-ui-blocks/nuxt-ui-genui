@@ -10,7 +10,7 @@ Nuxt UI GenUI — experimental Nuxt UI component library for OpenUI. pnpm monore
 - `pnpm typecheck` — `nuxt typecheck` in the playground (strict TS).
 - `pnpm test` — `pnpm -r test` (core + playground vitest).
 - Single suite: `cd apps/playground; pnpm vitest run tests/import-boundary.test.ts` (same pattern for other files; core: `cd packages/core; pnpm vitest run tests/schemas.test.ts`).
-- Node 20.19+, pnpm 9+. Package versions float on `^` ranges (lockfile committed).
+- Node ≥22.18 (CI: Node 24), pnpm 9+. Package versions float on `^` ranges (lockfile committed).
 
 ## Layout
 

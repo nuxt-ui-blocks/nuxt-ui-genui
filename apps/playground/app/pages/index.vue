@@ -16,10 +16,16 @@ const {
 
 const draft = ref('Create a sales dashboard with revenue, orders, conversion rate, and recent orders.')
 
-function onRendererError(errors: OpenUIError[]) {
-  // Suppress transient render errors while the stream is in flight;
+function isInFlight(message: { id: string }): boolean {
+  // Only the last (in-flight) assistant message streams; completed
+  // dashboards render in final mode and surface terminal errors.
+  return isStreaming.value && messages.value[messages.value.length - 1]?.id === message.id
+}
+
+function onRendererError(errors: OpenUIError[], messageId: string) {
+  // Suppress transient render errors only while THIS message is the in-flight one;
   // only the terminal verdict is surfaced.
-  if (isStreaming.value) return
+  if (isStreaming.value && messages.value[messages.value.length - 1]?.id === messageId) return
   const joined = errors
     .map((e) => (e as { message?: string })?.message ?? String(e))
     .filter(Boolean)
@@ -29,8 +35,8 @@ function onRendererError(errors: OpenUIError[]) {
   setRenderError(joined || null)
 }
 
-async function submit(prompt?: string) {
-  const text = (prompt ?? draft.value).trim()
+async function submit() {
+  const text = draft.value.trim()
   if (!text) return
   draft.value = ''
   await sendMessage(text)
@@ -65,9 +71,9 @@ async function submit(prompt?: string) {
           <div v-if="part.type === 'data-genui'" class="w-full">
             <GenuiGenUIRenderer
               :response="(part as GenUIPart).data.ui"
-              :is-streaming="isStreaming"
+              :is-streaming="isInFlight(message)"
               @action="handleAction"
-              @error="onRendererError"
+              @error="(errors) => onRendererError(errors, message.id)"
             />
           </div>
           <p v-else-if="part.type === 'text'" class="text-sm">{{ part.text }}</p>
@@ -87,7 +93,7 @@ async function submit(prompt?: string) {
 
     <UAlert
       v-if="renderError"
-      class="mt-4"
+      class="mt-4 whitespace-pre-wrap"
       color="error"
       variant="subtle"
       title="Render error"
@@ -95,7 +101,7 @@ async function submit(prompt?: string) {
     />
     <UAlert
       v-if="error"
-      class="mt-4"
+      class="mt-4 whitespace-pre-wrap"
       color="error"
       variant="subtle"
       title="Generation error"

@@ -3,9 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "files": ["src"],
-  "dependencies": { "zod": "^4.1.0" },
-  "devDependencies": { "typescript": "^5.9.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.0"
+  }
 }

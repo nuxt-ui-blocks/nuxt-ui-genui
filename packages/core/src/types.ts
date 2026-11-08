@@ -1,5 +1,5 @@
 export interface GenUIAdapterMessage {
-  role: 'system' | 'user' | 'assistant'
+  role: 'user' | 'assistant'
   content: string
 }
 export interface GenUIAdapterInput {

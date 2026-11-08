@@ -165,3 +165,67 @@ export async function generateUi(
     ? { ok: true, ui: validated.ui, meta: { mode: 'chat', model: modelName, validated: true } }
     : { ok: false, issues: validated.issues }
 }
+
+export type GenUiStreamModel = (input: {
+  system: string
+  messages: GenUIAdapterMessage[]
+}) => Promise<AsyncIterable<string>>
+
+export type StreamEvent =
+  | { type: 'chunk'; text: string }
+  | { type: 'done'; ui: string; meta: { mode: 'chat'; model: string; validated: true } }
+  | { type: 'error'; issues: string[]; reason: 'boundary' | 'provider' | 'config' }
+
+const PROVIDER_FAILURE_MESSAGE =
+  'The model provider request failed. Check OPENAI_API_KEY / OPENAI_MODEL and try again.'
+
+export async function streamUi(
+  input: GenUIAdapterInput,
+  model?: GenUiStreamModel
+): Promise<AsyncGenerator<StreamEvent>> {
+  const apiKey = process.env.OPENAI_API_KEY
+  const modelName = process.env.OPENAI_MODEL
+  if (!apiKey || !modelName) {
+    throw new AdapterConfigError(
+      'OPENAI_API_KEY and OPENAI_MODEL must be set (see .env.example). No default model is provided.'
+    )
+  }
+
+  const run: GenUiStreamModel =
+    model ??
+    (async ({ system, messages }) => {
+      const [{ streamText }, { openai }] = await Promise.all([
+        import('ai'),
+        import('@ai-sdk/openai')
+      ])
+      const result = streamText({ model: openai(modelName), system, messages })
+      return result.textStream
+    })
+
+  // Pre-stream failures must surface as thrown errors (plain createError), not SSE frames.
+  const iterable = await run({ system: buildSystemPrompt(), messages: input.messages })
+
+  return (async function* (): AsyncGenerator<StreamEvent> {
+    let full = ''
+    try {
+      for await (const chunk of iterable) {
+        full += chunk
+        yield { type: 'chunk', text: chunk }
+      }
+    } catch {
+      yield { type: 'error', issues: [PROVIDER_FAILURE_MESSAGE], reason: 'provider' }
+      return
+    }
+
+    const validated = validateUi(full)
+    if (!validated.ok) {
+      yield { type: 'error', issues: validated.issues, reason: 'boundary' }
+      return
+    }
+    yield {
+      type: 'done',
+      ui: validated.ui,
+      meta: { mode: 'chat', model: modelName, validated: true }
+    }
+  })()
+}

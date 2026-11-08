@@ -3,6 +3,7 @@ import {
   AdapterConfigError,
   ChatRequestSchema,
   generateUi,
+  streamUi,
   validateUi
 } from '../server/utils/genuiAdapter'
 
@@ -88,6 +89,69 @@ describe('generateUi', () => {
       ui: VALID_UI,
       meta: { mode: 'chat', model: 'gpt-test', validated: true }
     })
+    vi.unstubAllEnvs()
+  })
+})
+
+function mockStreamModel(chunks: string[] | Error): any {
+  return async () => {
+    if (chunks instanceof Error) return (async function* () { throw chunks })()
+    return (async function* () { for (const c of chunks) yield c })()
+  }
+}
+
+describe('streamUi', () => {
+  it('throws AdapterConfigError before streaming when env is missing', async () => {
+    vi.stubEnv('OPENAI_API_KEY', '')
+    vi.stubEnv('OPENAI_MODEL', '')
+    await expect(
+      streamUi({ messages: [{ role: 'user', content: 'dash' }] })
+    ).rejects.toBeInstanceOf(AdapterConfigError)
+    vi.unstubAllEnvs()
+  })
+
+  it('streams chunks and emits done with the canonical ui for valid output', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'test-key')
+    vi.stubEnv('OPENAI_MODEL', 'gpt-test')
+    const half = VALID_UI.length / 2
+    const events: any[] = []
+    for await (const e of await streamUi(
+      { messages: [{ role: 'user', content: 'dash' }] },
+      mockStreamModel([VALID_UI.slice(0, half), VALID_UI.slice(half)])
+    )) events.push(e)
+    expect(events.filter((e) => e.type === 'chunk').map((e) => e.text).join('')).toBe(VALID_UI)
+    const done = events.find((e) => e.type === 'done')
+    expect(done).toEqual({ type: 'done', ui: VALID_UI, meta: { mode: 'chat', model: 'gpt-test', validated: true } })
+    expect(events.find((e) => e.type === 'error')).toBeUndefined()
+    vi.unstubAllEnvs()
+  })
+
+  it('emits an error with reason boundary when accumulated output is invalid', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'test-key')
+    vi.stubEnv('OPENAI_MODEL', 'gpt-test')
+    const events: any[] = []
+    for await (const e of await streamUi(
+      { messages: [{ role: 'user', content: 'dash' }] },
+      mockStreamModel(['Here is your dashboard, not Lang at all.'])
+    )) events.push(e)
+    const err = events.find((e) => e.type === 'error')
+    expect(err.reason).toBe('boundary')
+    expect(err.issues.length).toBeGreaterThan(0)
+    expect(events.find((e) => e.type === 'done')).toBeUndefined()
+    vi.unstubAllEnvs()
+  })
+
+  it('emits an error with reason provider when the model throws mid-stream', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'test-key')
+    vi.stubEnv('OPENAI_MODEL', 'gpt-test')
+    const events: any[] = []
+    for await (const e of await streamUi(
+      { messages: [{ role: 'user', content: 'dash' }] },
+      mockStreamModel(new Error('connection reset'))
+    )) events.push(e)
+    const err = events.find((e) => e.type === 'error')
+    expect(err.reason).toBe('provider')
+    expect(events.find((e) => e.type === 'done')).toBeUndefined()
     vi.unstubAllEnvs()
   })
 })

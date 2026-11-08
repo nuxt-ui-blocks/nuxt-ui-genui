@@ -25,6 +25,7 @@ export function buildSystemPrompt(): string {
     ...componentSpecs.map((spec) => `- ${spec.name}: ${spec.description}`),
     ``,
     `Emit EXACTLY one line and nothing else. No prose before or after. No code fences.`,
+    `Your reply MUST begin with the literal characters "root = ". Never omit the "root = " prefix.`,
     `Shape: root = SalesDashboard("<title>", "<description>", [<metrics>], [<orders>])`,
     `Arguments are positional JSON values in this EXACT Zod property order:`,
     shape,

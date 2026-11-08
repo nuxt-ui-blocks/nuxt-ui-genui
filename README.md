@@ -8,7 +8,7 @@ An experimental Nuxt UI component library for OpenUI. A pnpm monorepo with `apps
 
 ```powershell
 pnpm install
-Copy-Item .env.example .env  # then set OPENAI_API_KEY and OPENAI_MODEL
+Copy-Item .env.example apps/playground/.env  # then set OPENAI_API_KEY and OPENAI_MODEL
 pnpm --filter nuxt-ui-genui-playground dev
 ```
 
@@ -23,7 +23,7 @@ Open the local URL printed by Nuxt. The chat client defaults to `/api/genui/chat
 | `OPENAI_API_KEY` | yes      | No default; request fails without it |
 | `OPENAI_MODEL`   | yes      | No default model is provided   |
 
-Copy `.env.example` to `.env` and fill in both. `.env` is gitignored.
+Copy `.env.example` to `apps/playground/.env` and fill in both (Nuxt loads `.env` from the playground rootDir — the root `.env.example` is the template). `apps/playground/.env` is gitignored. Also set `OPENAI_BASE_URL` if your provider is not api.openai.com (e.g. a local OpenAI-compatible gateway).
 
 ## Verification
 

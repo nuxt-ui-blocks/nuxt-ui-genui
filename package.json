@@ -1,0 +1,21 @@
+{
+  "name": "nuxt-ui-genui-mvp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^4.12.0",
+    "@openuidev/vue-lang": "^0.4.1",
+    "nuxt": "^4.2.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vue-tsc": "^3.0.0"
+  }
+}

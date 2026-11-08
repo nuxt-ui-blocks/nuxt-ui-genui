@@ -9,7 +9,7 @@ const roots = [
 
 const banned: Array<[RegExp, string]> = [
   [/\.vue['"]/, '.vue import'],
-  [/library\.ts|#shared\/genui\/library/, 'client-only library import'],
+  [/library\.ts|#shared\/genui\/library|\/genui\/library/, 'client-only library import'],
   [/#components/, '#components import'],
   [/@nuxt\/ui/, 'Nuxt UI import'],
   [/@openuidev\/vue-lang/, 'OpenUI client renderer import']

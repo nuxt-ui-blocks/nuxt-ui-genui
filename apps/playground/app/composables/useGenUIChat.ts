@@ -12,7 +12,7 @@ export function useGenUIChat() {
     {
       id: 'welcome',
       role: 'assistant',
-      text: 'Ask me to create a dashboard. The demo uses a deterministic mock transport; connect a model provider to make generation dynamic.'
+      text: 'Ask me to create a dashboard. I use OpenAI to generate the UI — /api/genui/demo is kept as an offline deterministic demo.'
     }
   ])
   const isStreaming = ref(false)
@@ -23,6 +23,11 @@ export function useGenUIChat() {
     if (!content || isStreaming.value) return
 
     error.value = null
+    // Snapshot prior turns before pushing the new user/assistant entries, so the
+    // request carries history + the new user turn exactly once.
+    const history = messages.value
+      .filter((m) => m.id !== 'welcome')
+      .map((m) => ({ role: m.role, content: m.text }))
     messages.value.push({ id: crypto.randomUUID(), role: 'user', text: content })
     isStreaming.value = true
 
@@ -35,13 +40,17 @@ export function useGenUIChat() {
     messages.value.push(assistant)
 
     try {
-      const result = await $fetch<{ ui: string }>('/api/genui/demo', {
+      const result = await $fetch<{ ui: string }>('/api/genui/chat', {
         method: 'POST',
-        body: { prompt: content }
+        body: { messages: [...history, { role: 'user', content }] }
       })
       assistant.ui = result.ui
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'Generation failed.'
+      const data = (cause as { data?: { error?: string; statusMessage?: string } } | null)?.data
+      error.value =
+        data?.error ??
+        data?.statusMessage ??
+        (cause instanceof Error ? cause.message : 'Generation failed.')
       assistant.text = 'I could not generate the interface.'
     } finally {
       isStreaming.value = false

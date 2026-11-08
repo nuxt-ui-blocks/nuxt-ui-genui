@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import type { OpenUIError } from '@openuidev/vue-lang'
+
 const { messages, isStreaming, error, sendMessage, handleAction } = useGenUIChat()
 const draft = ref('Create a sales dashboard with revenue, orders, conversion rate, and recent orders.')
+const renderError = ref<string | null>(null)
+
+function onRenderError(errors: OpenUIError[]) {
+  renderError.value = errors[0]?.message ?? 'Render failed.'
+}
 
 async function submit() {
   const prompt = draft.value
   draft.value = ''
+  renderError.value = null
   await sendMessage(prompt)
 }
 </script>
@@ -33,17 +41,18 @@ async function submit() {
           </div>
         </div>
         <div v-if="message.ui !== undefined && message.ui !== ''" class="w-full">
-          <GenuiGenUIRenderer :response="message.ui" :is-streaming="false" @action="handleAction" />
+          <GenuiGenUIRenderer :response="message.ui" :is-streaming="false" @action="handleAction" @error="onRenderError" />
         </div>
       </div>
 
       <UAlert v-if="error" color="error" variant="subtle" title="Generation error" :description="error" />
+      <UAlert v-if="renderError" color="error" variant="subtle" title="Render error" :description="renderError" />
     </section>
 
     <form class="mt-8 rounded-2xl border border-default bg-default p-3 shadow-sm" @submit.prevent="submit">
       <UTextarea v-model="draft" autoresize :rows="2" :maxrows="5" variant="none" placeholder="Describe the interface you want..." class="w-full" />
       <div class="mt-3 flex items-center justify-between gap-3 border-t border-default pt-3">
-        <p class="text-xs text-muted">Demo transport · OpenUI Lang renderer</p>
+        <p class="text-xs text-muted">Model-backed · OpenUI Lang renderer · offline demo at /api/genui/demo</p>
         <UButton type="submit" :loading="isStreaming" :disabled="!draft.trim() || isStreaming" trailing-icon="i-lucide-arrow-up">
           Generate UI
         </UButton>

@@ -46,10 +46,14 @@ export function useGenUIChat() {
       })
       assistant.ui = result.ui
     } catch (cause) {
-      const data = (cause as { data?: { error?: string; statusMessage?: string } } | null)?.data
+      // h3 error bodies are `{ error: true, statusCode, statusMessage, message, data? }`;
+      // with `data` present, the route's detail nests at `cause.data.data`.
+      const data = (cause as { data?: { error?: unknown; statusMessage?: string; message?: string; data?: { error?: string } } } | null)?.data
       error.value =
-        data?.error ??
+        data?.data?.error ??
         data?.statusMessage ??
+        data?.message ??
+        (typeof data?.error === 'string' ? data.error : undefined) ??
         (cause instanceof Error ? cause.message : 'Generation failed.')
       assistant.text = 'I could not generate the interface.'
     } finally {

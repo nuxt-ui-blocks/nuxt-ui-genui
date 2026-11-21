@@ -1,10 +1,9 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-:root {
-  color-scheme: light dark;
+html,
+body,
+#__nuxt {
+  height: 100%;
 }
 
-body {
-  @apply min-h-screen bg-default text-default antialiased;
-}

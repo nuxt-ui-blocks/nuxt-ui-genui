@@ -1,7 +1,9 @@
-.nuxt
-.output
-node_modules
-dist
+node_modules/
+dist/
+.nuxt/
+.output/
+.data/
+*.log
 .env
-.env.*
-!.env.example
+.DS_Store
+.nuxtrc

@@ -1,0 +1,15 @@
+{
+  "name": "@nuxt-ui-genui/chat",
+  "version": "0.1.0",
+  "description": "Framework-agnostic chat client for OpenUI Lang — no AI SDK required",
+  "license": "MIT",
+  "keywords": ["openui", "generative-ui", "chat", "vue", "ai", "streaming"],
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist"],
+  "scripts": { "build": "unbuild", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run" },
+  "dependencies": { "@nuxt-ui-genui/core": "workspace:*" },
+  "peerDependencies": { "vue": ">=3.5.0" },
+  "devDependencies": { "typescript": "^5.6.0", "unbuild": "^3.6.1", "vitest": "^3.0.0" }
+}

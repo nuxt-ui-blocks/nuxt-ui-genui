@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vue", "node"]
+  },
+  "include": ["src", "test", "build.config.ts", "vitest.config.ts"],
+  "exclude": ["test/fixtures"]
+}

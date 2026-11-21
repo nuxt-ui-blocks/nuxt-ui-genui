@@ -1,0 +1,66 @@
+{
+  "name": "@nuxt-ui-genui/components",
+  "version": "0.1.0",
+  "description": "Built-in OpenUI Lang component definitions and Vue renderers for the Nuxt GenUI framework",
+  "license": "MIT",
+  "keywords": ["openui", "generative-ui", "nuxt", "nuxt-ui", "vue", "ai"],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./sfc": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    },
+    "./upload": {
+      "types": "./dist/upload-context.d.ts",
+      "import": "./dist/upload-context.js"
+    },
+    "./form-context": {
+      "types": "./dist/form-context.d.ts",
+      "import": "./dist/form-context.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.4",
+    "@nuxt-ui-genui/core": "workspace:*",
+    "@openuidev/lang-core": "^0.4.1",
+    "@openuidev/vue-lang": "^0.4.2",
+    "dompurify": "^3.2.0",
+    "marked": "^15.0.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependencies": {
+    "@nuxt/ui": ">=4.0.0",
+    "nuxt": ">=4.0.0",
+    "vue": ">=3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@nuxt/ui": { "optional": true },
+    "nuxt": { "optional": true }
+  },
+  "devDependencies": {
+    "@nuxt/ui": "^4.12.0",
+    "@tanstack/charts": "^1.5.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "^5.6.0",
+    "unbuild": "^3.6.1",
+    "vitest": "^3.0.0",
+    "vue": "^3.5.0",
+    "vue-tsc": "^2.1.0"
+  }
+}

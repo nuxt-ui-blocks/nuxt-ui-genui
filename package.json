@@ -1,15 +1,14 @@
 {
-  "name": "nuxt-ui-genui",
+  "name": "nuxt-genui",
   "private": true,
   "type": "module",
-  "description": "GenUI for Nuxt UI — a Nuxt UI component library for OpenUI (experimental)",
-  "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/nuxt-ui-blocks/nuxt-ui-genui.git" },
-  "engines": { "node": "^22.18.0 || >=24.11.0" },
   "scripts": {
-    "dev": "pnpm --filter nuxt-ui-genui-playground dev",
-    "build": "pnpm --filter nuxt-ui-genui-playground build",
-    "typecheck": "pnpm --filter nuxt-ui-genui-playground typecheck",
-    "test": "pnpm -r test"
-  }
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm build:packages && pnpm -r test",
+    "build:packages": "pnpm -r --filter \"./packages/*\" build",
+    "dev": "pnpm build:packages && pnpm --filter playground dev"
+  },
+  "engines": { "node": ">=20.19", "pnpm": ">=9" },
+  "devDependencies": { "typescript": "^5.6.0" }
 }

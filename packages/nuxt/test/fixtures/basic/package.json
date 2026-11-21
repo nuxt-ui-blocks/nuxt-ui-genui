@@ -1,0 +1,11 @@
+{
+  "name": "basic-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "nuxt": "^4.1.0",
+    "@nuxt/ui": "^4.12.0",
+    "@nuxt-ui-genui/components": "workspace:*",
+    "@tanstack/charts": "^1.5.0"
+  }
+}

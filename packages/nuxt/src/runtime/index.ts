@@ -1,0 +1,5 @@
+export { default as NuxtGenUI } from './NuxtGenUI.vue'
+export { default as GenUIRenderer } from './GenUIRenderer'
+export { bridgeAction } from './action-bridge'
+export { createGenUI, type GenUIPluginOptions } from './plugin'
+export { default as plugin } from './plugin'

@@ -7,7 +7,10 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm build:packages && pnpm -r test",
     "build:packages": "pnpm -r --filter \"./packages/*\" build",
-    "dev": "pnpm build:packages && pnpm --filter playground dev"
+    "dev": "pnpm build:packages && pnpm --filter playground dev",
+    "verify:packages": "node scripts/verify-packages.mjs",
+    "verify:consumer": "node scripts/verify-clean-consumer.mjs",
+    "verify:release": "pnpm build && pnpm verify:packages && pnpm verify:consumer"
   },
   "engines": { "node": ">=20.19", "pnpm": ">=9" },
   "devDependencies": { "typescript": "^5.6.0" }

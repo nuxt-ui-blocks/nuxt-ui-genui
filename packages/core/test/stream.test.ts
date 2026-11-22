@@ -119,11 +119,48 @@ describe('parseSSEChunks', () => {
     const body = 'data: {"delta":"a"}\n\ndata: [DONE]'
     expect(await collect(parseSSEChunks(streamOf(body)))).toBe('a')
   })
+
+  it('parses standalone CR line terminators', async () => {
+    const body = 'data: {"delta":"a"}\r\rdata: {"delta":"b"}\r\r'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
+  })
+
+  it('joins multiline data fields with standalone CR terminators', async () => {
+    const body = 'data: root = Card(\rdata:   Text("hi")\rdata: )\r\r'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('root = Card(\n  Text("hi")\n)')
+  })
+
+  it('stops at [DONE] delivered with standalone CR', async () => {
+    const body = 'data: {"delta":"a"}\r\rdata: [DONE]\r\rdata: {"delta":"c"}\r\r'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('a')
+  })
+
+  it('assembles a CRLF pair split across byte chunks', async () => {
+    const encoder = new TextEncoder()
+    const parts = ['data: {"delta":"a"}\r', '\rdata: {"delta":"b"}\r', '\r']
+    const stream = new ReadableStream({
+      start(controller) {
+        for (const part of parts) controller.enqueue(encoder.encode(part))
+        controller.close()
+      }
+    })
+    expect(await collect(parseSSEChunks(stream))).toBe('ab')
+  })
+
+  it('emits a final event without a trailing blank line using CR', async () => {
+    const body = 'data: {"delta":"a"}\r\rdata: {"delta":"b"}'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
+  })
 })
 
 describe('parseNDJSONChunks', () => {
   it('reads one JSON object per line', async () => {
     const body = '{"delta":"a"}\n{"delta":"b"}\n'
+    expect(await collect(parseNDJSONChunks(streamOf(body)))).toBe('ab')
+  })
+
+  it('accepts standalone CR line endings', async () => {
+    const body = '{"delta":"a"}\r{"delta":"b"}\r'
     expect(await collect(parseNDJSONChunks(streamOf(body)))).toBe('ab')
   })
 })

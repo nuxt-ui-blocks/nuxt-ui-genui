@@ -80,7 +80,10 @@ export function createGenUIToolHandler(options: CreateGenUIToolHandlerOptions): 
     const args = body.args && typeof body.args === 'object' && !Array.isArray(body.args)
       ? body.args as Record<string, unknown>
       : {}
-    if (JSON.stringify(args).length > limits.maxArgsBytes) {
+    // `.length` counts UTF-16 code units, not bytes: multibyte JSON (emoji, CJK)
+    // could exceed the cap while passing. Measure the actual UTF-8 byte size.
+    const argsBytes = new TextEncoder().encode(JSON.stringify(args)).byteLength
+    if (argsBytes > limits.maxArgsBytes) {
       return jsonResponse({ error: `Tool arguments exceed ${limits.maxArgsBytes} bytes.` }, 413)
     }
 
@@ -88,13 +91,23 @@ export function createGenUIToolHandler(options: CreateGenUIToolHandlerOptions): 
       const result = await options.tools[name](args, { signal: request.signal })
       return jsonResponse(result === undefined ? {} : result)
     } catch (error) {
-      const mapped = options.mapError?.(error, { tool: name })
-      if (mapped) {
-        return jsonResponse(mapped.body, mapped.status)
+      // Host-supplied hooks are untrusted callbacks: a throwing mapper or logger
+      // must never turn a handled tool failure into an unhandled rejection.
+      try {
+        const mapped = options.mapError?.(error, { tool: name })
+        if (mapped) {
+          return jsonResponse(mapped.body, mapped.status)
+        }
+      } catch {
+        // A failing mapper falls through to the generic, safe response below.
       }
 
       const id = errorId()
-      options.onUnexpectedError?.(error, { id, tool: name, request })
+      try {
+        options.onUnexpectedError?.(error, { id, tool: name, request })
+      } catch {
+        // A failing logger must not prevent the response either.
+      }
       return jsonResponse({ error: 'Tool execution failed.', id }, 500)
     }
   }

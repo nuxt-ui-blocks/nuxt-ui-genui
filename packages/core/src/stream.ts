@@ -101,16 +101,33 @@ export function extractDelta(payload: string): string {
   return extractChunk(payload).text
 }
 
-/** Split a text buffer into complete lines, keeping the remainder in `rest`. */
+/**
+ * Split a text buffer into complete lines, keeping the remainder in `rest`.
+ *
+ * The SSE spec permits LF, CRLF and standalone CR as line terminators, so all
+ * three are recognized here (the NDJSON parsers share this helper and simply
+ * ignore the extra terminators). A trailing `\r` is deliberately kept in
+ * `rest`: it may be the first half of a CRLF pair split across byte chunks and
+ * cannot be dispatched until the next chunk arrives.
+ */
 function takeLines(buffer: string): { lines: string[]; rest: string } {
   const lines: string[] = []
-  let index = buffer.indexOf('\n')
-  while (index >= 0) {
-    lines.push(buffer.slice(0, index).replace(/\r$/, ''))
-    buffer = buffer.slice(index + 1)
-    index = buffer.indexOf('\n')
+  let start = 0
+  for (let i = 0; i < buffer.length; i++) {
+    const char = buffer[i]
+    if (char === '\n') {
+      let end = i
+      if (end > start && buffer[end - 1] === '\r') end-- // CRLF pair
+      lines.push(buffer.slice(start, end))
+      start = i + 1
+    } else if (char === '\r') {
+      if (i === buffer.length - 1) break // possible CRLF split across chunks
+      lines.push(buffer.slice(start, i))
+      if (buffer[i + 1] === '\n') i++ // consume the LF half of CRLF
+      start = i + 1
+    }
   }
-  return { lines, rest: buffer }
+  return { lines, rest: buffer.slice(start) }
 }
 
 const SSE_DONE = '[DONE]'

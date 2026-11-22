@@ -98,4 +98,45 @@ describe('createGenUIToolHandler', () => {
     expect(response.status).toBe(413)
     expect((await response.json() as { error: string }).error).toContain('arguments exceed')
   })
+
+  it('measures argument size in UTF-8 bytes, not UTF-16 code units', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { echo: (args) => args },
+      limits: { maxArgsBytes: 40 }
+    })
+    // 20 CJK chars: 20 code units but 60 UTF-8 bytes; the serialized args are
+    // ~31 code units (would pass the old check) yet ~71 bytes (must be rejected).
+    const args = { blob: '\u4E2D'.repeat(20) }
+    expect(JSON.stringify(args).length).toBeLessThanOrEqual(40)
+    expect(new TextEncoder().encode(JSON.stringify(args)).byteLength).toBeGreaterThan(40)
+    const response = await handler(request({ name: 'echo', args }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('arguments exceed')
+  })
+
+  it('returns a safe 500 even when mapError itself throws', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { boom: () => { throw new Error('secret detail') } },
+      mapError: () => { throw new Error('mapper crashed') }
+    })
+    const response = await handler(request({ name: 'boom' }))
+    expect(response.status).toBe(500)
+    const body = await response.json() as { error: string; id: string }
+    expect(body.error).toBe('Tool execution failed.')
+    expect(body.id).toBeTruthy()
+    expect(JSON.stringify(body)).not.toContain('secret')
+  })
+
+  it('returns a safe 500 even when the logging hook throws', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { boom: () => { throw new Error('secret detail') } },
+      onUnexpectedError: () => { throw new Error('logger crashed') }
+    })
+    const response = await handler(request({ name: 'boom' }))
+    expect(response.status).toBe(500)
+    const body = await response.json() as { error: string; id: string }
+    expect(body.error).toBe('Tool execution failed.')
+    expect(body.id).toBeTruthy()
+    expect(JSON.stringify(body)).not.toContain('secret')
+  })
 })

@@ -6,7 +6,7 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "typecheck": "nuxt typecheck",
-    "test": "echo no-tests"
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.139",
@@ -30,5 +30,8 @@
     "tailwindcss": "^4.0.0",
     "vue": "^3.5.0",
     "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
   }
 }

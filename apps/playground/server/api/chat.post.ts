@@ -1,11 +1,9 @@
 import { createPlaygroundLibrary, promptOptions } from '~/lib/library'
 import { generateGenUISystemPrompt } from '@nuxt-ui-genui/core'
-import { streamGenUI, streamGenUIText } from '@nuxt-ui-genui/ai-sdk'
-import { resolveGenUILive, resolveGenUIMock } from '../utils/genai'
 import { pickProgram } from '~/lib/demo-program'
+import { GenUIProviderConfigError, planChatRequest, resolveGenUIProvider } from '../utils/provider'
 
 const library = createPlaygroundLibrary()
-const systemPrompt = generateGenUISystemPrompt(library, promptOptions)
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ messages?: unknown }>(event)
@@ -24,23 +22,34 @@ export default defineEventHandler(async (event) => {
   const format = getQuery(event).format === 'ui-stream' || /(^|,)\s*text\/event-stream\s*(,|$)/.test(accept)
     ? 'ui-stream'
     : 'text'
-  const stream = format === 'ui-stream' ? streamGenUI : streamGenUIText
 
-  // The deterministic demo is opt-in: GENAI_MOCK=1 (or the legacy GENAI_LIVE=0).
-  if (resolveGenUIMock(process.env)) {
-    const userText = messages
-      .map((m) => (Array.isArray((m as { parts?: { text?: string }[] }).parts) ? (m as { parts: { text?: string }[] }).parts.map((p) => p?.text ?? '').join(' ') : ''))
-      .join(' ')
-    return stream({ systemPrompt, messages, mockProgram: pickProgram(userText) })
+  const userText = messages
+    .map((m) => (Array.isArray((m as { parts?: { text?: string }[] }).parts) ? (m as { parts: { text?: string }[] }).parts.map((p) => p?.text ?? '').join(' ') : ''))
+    .join(' ')
+
+  let config
+  try {
+    config = resolveGenUIProvider(process.env)
+  } catch (error) {
+    if (error instanceof GenUIProviderConfigError) {
+      throw createError({ statusCode: 503, statusMessage: error.message })
+    }
+    throw error
   }
-
-  // Live path: a generic OpenAI-compatible endpoint only. Never a verified hosted Thesys claim.
-  const live = resolveGenUILive(process.env)
-  if (!live) {
-    throw createError({
-      statusCode: 503,
-      statusMessage: 'Live model not configured. Set GENAI_API_KEY (plus optional GENAI_BASE_URL / GENAI_MODEL) in apps/playground/.env, or run with GENAI_MOCK=1 for the deterministic demo.'
+  const systemPrompt = generateGenUISystemPrompt(library, { ...promptOptions, cloud: config.cloud })
+  try {
+    const plan = planChatRequest({
+      config,
+      format,
+      messages,
+      systemPrompt,
+      mockProgram: pickProgram(userText)
     })
+    return plan.stream(plan.options)
+  } catch (error) {
+    if (error instanceof GenUIProviderConfigError) {
+      throw createError({ statusCode: 503, statusMessage: error.message })
+    }
+    throw error
   }
-  return stream({ systemPrompt, messages, live })
 })

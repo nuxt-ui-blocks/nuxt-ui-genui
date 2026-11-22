@@ -28,6 +28,21 @@ function request(body: unknown, init: RequestInit = {}): Request {
   })
 }
 
+/** A request with no declared content-length, emitted in two byte chunks. */
+function streamRequest(payload: string): Request {
+  const bytes = new TextEncoder().encode(payload)
+  const split = Math.ceil(bytes.byteLength / 2)
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes.slice(0, split))
+      controller.enqueue(bytes.slice(split))
+      controller.close()
+    }
+  })
+  const init = { method: 'POST', body, duplex: 'half' } as RequestInit
+  return new Request('http://localhost/api/chat', init)
+}
+
 describe('createGenUIChatHandler', () => {
   it('streams the sender output and builds a prompt that advertises tools', async () => {
     let captured: GenUISendRequest | undefined
@@ -123,5 +138,51 @@ describe('createGenUIChatHandler', () => {
     const handler = createGenUIChatHandler({ library, sender })
     await handler(request({ messages: [] }))
     expect(sender).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized body declared by content-length with 413', async () => {
+    const sender = vi.fn(() => 'ok')
+    const handler = createGenUIChatHandler({ library, sender, limits: { maxBodyBytes: 50 } })
+    const response = await handler(request({ messages: ['x'.repeat(100)] }, {
+      headers: { 'content-type': 'application/json', 'content-length': '10000' }
+    }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('exceeds')
+    expect(sender).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized streamed body without a declared length', async () => {
+    const sender = vi.fn(() => 'ok')
+    const handler = createGenUIChatHandler({ library, sender, limits: { maxBodyBytes: 50 } })
+    const payload = JSON.stringify({ messages: ['x'.repeat(100)] })
+    expect(payload.length).toBeGreaterThan(50)
+    const response = await handler(streamRequest(payload))
+    expect(response.status).toBe(413)
+    expect(sender).not.toHaveBeenCalled()
+  })
+
+  it('rejects too many messages with 413', async () => {
+    const handler = createGenUIChatHandler({ library, sender: () => 'ok', limits: { maxMessages: 2 } })
+    const response = await handler(request({ messages: ['a', 'b', 'c'] }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('Too many messages')
+  })
+
+  it('rejects an oversized message with 413', async () => {
+    const handler = createGenUIChatHandler({ library, sender: () => 'ok', limits: { maxMessageChars: 5 } })
+    const response = await handler(request({ messages: ['abcdefghij'] }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('exceeds 5 characters')
+  })
+
+  it('accepts a message at the configured limit', async () => {
+    const handler = createGenUIChatHandler({
+      library,
+      sender: () => 'ok',
+      limits: { maxMessages: 2, maxMessageChars: 5 }
+    })
+    const response = await handler(request({ messages: ['abcde'] }))
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('ok')
   })
 })

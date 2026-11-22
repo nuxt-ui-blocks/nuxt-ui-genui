@@ -77,6 +77,48 @@ describe('parseSSEChunks', () => {
     const body = 'data: {"delta":"a"}\n\ndata: {"delta":"b"}\n\ndata: [DONE]\n\ndata: {"delta":"c"}\n'
     expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
   })
+
+  it('joins multiple data fields of one event with newlines', async () => {
+    const body = 'data: root = Card(\ndata:   Text("hi")\ndata: )\n\n'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('root = Card(\n  Text("hi")\n)')
+  })
+
+  it('joins a JSON payload split across data fields', async () => {
+    const body = 'data: {"delta":\ndata: "a"}\n\n'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('a')
+  })
+
+  it('accepts whitespace-prefixed field names', async () => {
+    const body = '  data: {"delta":"a"}\n\ndata: {"delta":"b"}\n\n'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
+  })
+
+  it('ignores comments and non-data fields', async () => {
+    const body = ': heartbeat\n\nevent: message\nid: 1\ndata: {"delta":"a"}\n\n: ping\ndata: {"delta":"b"}\n\n'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
+  })
+
+  it('assembles events split across byte chunks', async () => {
+    const encoder = new TextEncoder()
+    const parts = ['data: {"de', 'lta":"a"}\n\ndata: {"delta":', '"b"}\n\n']
+    const stream = new ReadableStream({
+      start(controller) {
+        for (const part of parts) controller.enqueue(encoder.encode(part))
+        controller.close()
+      }
+    })
+    expect(await collect(parseSSEChunks(stream))).toBe('ab')
+  })
+
+  it('emits a final event without a trailing blank line', async () => {
+    const body = 'data: {"delta":"a"}\n\ndata: {"delta":"b"}'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('ab')
+  })
+
+  it('stops at an unterminated [DONE] event', async () => {
+    const body = 'data: {"delta":"a"}\n\ndata: [DONE]'
+    expect(await collect(parseSSEChunks(streamOf(body)))).toBe('a')
+  })
 })
 
 describe('parseNDJSONChunks', () => {
@@ -138,6 +180,12 @@ describe('detailed parsers', () => {
     expect(await collectChunks(parseSSEChunksDetailed(streamOf(body)))).toEqual([
       { text: 'a', mode: 'snapshot' },
       { text: 'b', mode: 'delta' }
+    ])
+  })
+  it('preserves snapshot mode through SSE comments and multi-line data', async () => {
+    const body = ': ping\n\ndata: {"messages":\ndata: [{"content":"ab"}]}\n\n'
+    expect(await collectChunks(parseSSEChunksDetailed(streamOf(body)))).toEqual([
+      { text: 'ab', mode: 'snapshot' }
     ])
   })
 })

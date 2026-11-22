@@ -36,6 +36,45 @@ describe('createNuxtUILibrary options', () => {
     expect(prompt).toContain('WeatherCard')
   })
 
+  it('selects a custom component by name exactly once', () => {
+    // Before the dedup fix this threw DUPLICATE_COMPONENT from createGenUILibrary.
+    const library = createNuxtUILibrary({
+      root: 'WeatherCard',
+      components: ['WeatherCard'],
+      extraComponents: [weatherCard]
+    })
+    const spec = (library as never as { toSpec(): { components: Record<string, unknown> } }).toSpec()
+    expect(Object.keys(spec.components).filter((name) => name === 'WeatherCard')).toHaveLength(1)
+  })
+
+  it('attaches a renderer to a selected custom component', () => {
+    const marker = { marker: 'client-renderer' } as never
+    const componentBefore = (weatherCard as never as { component?: unknown }).component
+    expect(() => createNuxtUILibrary({
+      root: 'WeatherCard',
+      components: ['WeatherCard'],
+      extraComponents: [weatherCard],
+      renderers: { WeatherCard: marker }
+    })).not.toThrow()
+    // The shared definition is never mutated, even when a renderer is supplied.
+    expect((weatherCard as never as { component?: unknown }).component).toBe(componentBefore)
+  })
+
+  it('rejects duplicate custom component names', () => {
+    expect(() => createNuxtUILibrary({
+      extraComponents: [weatherCard, weatherCard]
+    })).toThrow(GenUILibraryError)
+  })
+
+  it('rejects a custom component that collides with a built-in name', () => {
+    const fakeCard = defineGenUIComponent({
+      name: 'Card',
+      props: z.object({}),
+      description: 'Not the real Card.'
+    })
+    expect(() => createNuxtUILibrary({ extraComponents: [fakeCard] })).toThrow(GenUILibraryError)
+  })
+
   it('adds extra Card children to Card\'s Zod union', () => {
     const base = createCardDef().props.shape.children.element.options.length
     const card = createCardDef([weatherCard])

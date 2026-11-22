@@ -7,7 +7,14 @@ import type {
   GenUIToolSpec,
   GenUISender
 } from './types'
-import { jsonResponse, messageRole, messageText, readJsonObject } from './http'
+import {
+  DEFAULT_REQUEST_LIMITS,
+  jsonResponse,
+  messageRole,
+  messageText,
+  readJsonObject,
+  type GenUIRequestLimits
+} from './http'
 
 export interface CreateGenUIChatHandlerOptions {
   /** Server-safe library; renderers are irrelevant here. */
@@ -24,6 +31,8 @@ export interface CreateGenUIChatHandlerOptions {
   systemPrompt?: string
   /** Extra prompt options merged under `tools`. */
   promptOptions?: GenUIPromptOptions
+  /** Bounds for request bodies and messages. Defaults are safe for public endpoints. */
+  limits?: GenUIRequestLimits
 }
 
 export type GenUIChatHandler = (request: Request) => Promise<Response>
@@ -39,15 +48,25 @@ async function* singleChunk(text: string): AsyncGenerator<string> {
  */
 export function createGenUIChatHandler(options: CreateGenUIChatHandlerOptions): GenUIChatHandler {
   const { library, sender } = options
+  const limits = { ...DEFAULT_REQUEST_LIMITS, ...options.limits }
 
   return async (request: Request): Promise<Response> => {
-    const body = await readJsonObject(request)
-    if (!body || !Array.isArray(body.messages)) {
+    const read = await readJsonObject(request, limits.maxBodyBytes)
+    if (!read.ok) {
+      return jsonResponse({ error: read.error }, read.status)
+    }
+    const body = read.value
+    if (!Array.isArray(body.messages)) {
       return jsonResponse({ error: 'Request body must contain a "messages" array.' }, 400)
     }
 
+    const rawMessages = body.messages as unknown[]
+    if (rawMessages.length > limits.maxMessages) {
+      return jsonResponse({ error: `Too many messages (maximum ${limits.maxMessages}).` }, 413)
+    }
+
     const messages: GenUINormalizedMessage[] = []
-    for (const raw of body.messages as unknown[]) {
+    for (const raw of rawMessages) {
       const content = messageText(raw)
       if (content === null) {
         return jsonResponse(
@@ -56,6 +75,9 @@ export function createGenUIChatHandler(options: CreateGenUIChatHandlerOptions): 
         )
       }
       if (!content.trim()) continue
+      if (content.length > limits.maxMessageChars) {
+        return jsonResponse({ error: `A message exceeds ${limits.maxMessageChars} characters.` }, 413)
+      }
       messages.push({ role: messageRole(raw as GenUIMessageRecord), content })
     }
     if (!messages.length) {

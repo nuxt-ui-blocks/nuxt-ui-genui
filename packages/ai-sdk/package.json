@@ -10,7 +10,7 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./chat": { "types": "./dist/chat.d.ts", "import": "./dist/chat.js" }
   },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "scripts": { "build": "unbuild", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run" },
   "dependencies": { "@ai-sdk/openai": "^3.0.139", "ai": "^6.0.325" },
   "peerDependencies": { "vue": ">=3.5.0" },

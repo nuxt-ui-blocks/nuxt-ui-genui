@@ -6,7 +6,7 @@
   "keywords": ["openui", "generative-ui", "ai", "streaming", "openui-lang"],
   "type": "module",
   "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "scripts": {
     "build": "unbuild",
     "typecheck": "tsc --noEmit -p tsconfig.json",

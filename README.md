@@ -9,7 +9,7 @@ What you get:
 - Optional Vercel AI SDK integration, kept out of core.
 - A reference "AI Operations Center" playground with live and deterministic modes.
 
-> **Alpha, not published.** Packages are not on npm yet and the API is unstable. This project targets **Nuxt 4 + Nuxt UI 4 only** and is built on the pre-1.0 `@openuidev/vue-lang` 0.4.x renderer.
+> **Alpha, not published.** Packages are not on npm yet and the API is unstable. This project targets **Nuxt 4 + Nuxt UI 4 only** and is built on the pre-1.0 `@openuidev/vue-lang` 0.4.x renderer. See the [release guide](docs/release.md) for the compatibility matrix and the alpha release checklist. The playground chat route is demo-only — no auth, authorization, rate limiting, or production middleware.
 
 ## How it works
 

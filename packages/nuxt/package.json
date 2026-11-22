@@ -21,7 +21,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "nuxt-module-build build",
@@ -36,7 +37,7 @@
     "zod": "^4.0.0"
   },
   "peerDependencies": {
-    "nuxt": ">=4.0.0",
+    "nuxt": ">=4.1.0",
     "vue": ">=3.5.0"
   },
   "peerDependenciesMeta": {

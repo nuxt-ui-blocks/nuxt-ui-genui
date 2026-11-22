@@ -124,12 +124,16 @@ The playground is live by default. Configure it in `apps/playground/.env` (gitig
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
+| `GENAI_PROVIDER` | unset | Provider selection: `mock`, `openai-compatible`, or `openui-cloud`. Unset keeps the legacy behavior below. |
 | `GENAI_API_KEY` | none | API key for the OpenAI-compatible endpoint. `THESYS_API_KEY` is used only as a fallback value. |
 | `GENAI_BASE_URL` | `http://127.0.0.1:8317/v1` | OpenAI-compatible gateway. A Thesys endpoint is never assumed. |
-| `GENAI_MODEL` | `gemini-3.5-flash-lite` | Model name sent to the gateway. |
+| `GENAI_MODEL` | `gemini-3.5-flash-lite` | Model name sent to the gateway. For `openui-cloud`, `GENAI_MODEL` is required and uses `{provider}/{model}` ids (for example `openai/gpt-5`); no default is assumed. |
 | `GENAI_MOCK` | unset | Set to `1` to stream fixed, deterministic programs with no network calls. |
+| `THESYS_API_KEY` | none | Server-only OpenUI Cloud key for `GENAI_PROVIDER=openui-cloud`. Never sent to the browser. |
 
-With no key and no mock, `/api/chat` returns 503 instead of silently serving demo data. The UI badge shows `live · <model>`, `mock · deterministic`, or `not configured`. Only a generic local OpenAI-compatible gateway has been verified; hosted providers are not claimed as tested.
+An explicit `GENAI_PROVIDER` overrides legacy `GENAI_MOCK`/`GENAI_LIVE`; with no provider variable, legacy behavior is unchanged. With no key and no mock, `/api/chat` returns 503 instead of silently serving demo data. The UI badge shows `live · <model>`, `mock · deterministic`, or `not configured`; with OpenUI Cloud configured it shows `openui cloud · <model>`. Only a generic local OpenAI-compatible gateway has been verified; hosted providers are not claimed as tested. See the [OpenUI Cloud smoke guide](docs/openui-cloud-smoke.md) for the optional manual check.
+
+> **Demo only:** the playground chat route is a demo, not a production template — no auth, authorization, rate limiting, or production middleware.
 
 ## Integrating a backend
 

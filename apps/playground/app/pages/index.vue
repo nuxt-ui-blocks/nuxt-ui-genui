@@ -159,7 +159,7 @@ watch(() => route.query.q, (q) => {
 interface AuditEvent { ts: number; formId: string; values: Record<string, unknown> }
 const auditEvents = ref<AuditEvent[]>([])
 const auditNote = ref('')
-const provider = ref<{ live: boolean; mock: boolean; model?: string }>({ live: false, mock: false })
+const provider = ref<{ live: boolean; mock: boolean; model?: string; provider?: string }>({ live: false, mock: false })
 
 async function refreshAudit() {
   try {
@@ -172,7 +172,7 @@ async function refreshAudit() {
 
 onMounted(() => {
   refreshAudit()
-  $fetch<{ live: boolean; mock: boolean; model?: string }>('/api/provider').then((r) => { provider.value = r }).catch(() => {})
+  $fetch<{ live: boolean; mock: boolean; model?: string; provider?: string }>('/api/provider').then((r) => { provider.value = r }).catch(() => {})
 })
 
 async function handleAction(event: ActionEvent) {
@@ -221,7 +221,7 @@ const reset = () => {
         <UBadge
           :color="provider.live ? 'success' : provider.mock ? 'neutral' : 'warning'"
           variant="soft"
-          :label="provider.live ? `live · ${provider.model ?? 'model'}` : provider.mock ? 'mock · deterministic' : 'not configured'"
+          :label="provider.provider === 'openui-cloud' ? `openui cloud · ${provider.model ?? 'model'}` : provider.live ? `live · ${provider.model ?? 'model'}` : provider.mock ? 'mock · deterministic' : 'not configured'"
         />
         <UButton
           icon="i-lucide-rotate-ccw"

@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/components",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Built-in OpenUI Lang component definitions and Vue renderers for the Nuxt GenUI framework",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "nuxt", "nuxt-ui", "vue", "ai"],

@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/ai-sdk",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Optional Vercel AI SDK adapter for OpenUI Lang",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "ai-sdk", "vercel", "streaming", "adapter"],

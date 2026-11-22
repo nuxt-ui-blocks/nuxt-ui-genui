@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/core",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Server-safe core for the Nuxt GenUI generative-UI framework: library specs, prompts and stream helpers",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "ai", "streaming", "openui-lang"],

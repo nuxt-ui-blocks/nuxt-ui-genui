@@ -1,6 +1,6 @@
 # Release: compatibility matrix and alpha checklist
 
-This is an **alpha — not stable, not published**. `@nuxt-ui-genui/*` 0.1.0 is the first public-facing version; the API is unstable and the packages are not on npm yet.
+This is an **alpha — not stable, not published**. `@nuxt-ui-genui/*` 0.1.0-alpha.1 is the first public-facing version; the API is unstable and the packages are not on npm yet.
 
 ## Compatibility matrix
 
@@ -11,7 +11,7 @@ This is an **alpha — not stable, not published**. `@nuxt-ui-genui/*` 0.1.0 is 
 | Nuxt | >=4.1 | Peer floors: `@nuxt-ui-genui/components` and `@nuxt-ui-genui/nuxt` declare `nuxt >=4.1.0`. |
 | Nuxt UI | >=4.12 | Peer floor: `@nuxt-ui-genui/components` declares `@nuxt/ui >=4.12.0`; all development runs `@nuxt/ui@4.12.0`. |
 | Vue | >=3.5 | `vue` peer is `>=3.5.0` in `@nuxt-ui-genui/{components,nuxt,chat,ai-sdk,chat-ui}`; development runs 3.5.45. |
-| `@openuidev/lang-core` | ^0.4.1 | Installed 0.4.1; in `dependencies` of all packages. |
+| `@openuidev/lang-core` | ^0.4.1 | Installed 0.4.1; declared directly in core, components, and nuxt (the other packages receive it transitively via core). |
 | `@openuidev/vue-lang` | ^0.4.2 | Installed 0.4.2; pre-1.0 renderer — see SSR limitation. |
 | Zod | 4 (`^4.0.0`) | Installed 4.6.7. |
 
@@ -32,17 +32,19 @@ The Vue OpenUI renderer is pre-1.0 and renders an empty wrapper under `renderToS
 ## Provider verification status
 
 - **Generic OpenAI-compatible gateway: verified.** The default local gateway (`http://127.0.0.1:8317/v1`, with `GENAI_BASE_URL`/`GENAI_API_KEY`) is verified: dev and prod servers answer 200 and a real streaming run renders the full card with no reload.
-- **OpenUI Cloud: documented, not verified.** The OpenUI Cloud path (`GENAI_PROVIDER=openui-cloud`; gateway base URL `https://api.thesys.dev/v1/embed`, endpoint `POST .../chat/completions`) has **not** been exercised against the live gateway during this alpha: no live cloud request was made and no key value is stored in any repo file. The manual smoke procedure is documented in [docs/openui-cloud-smoke.md](docs/openui-cloud-smoke.md) and is the only sanctioned cloud check before release.
-- No hosted provider is claimed as tested.
+- **OpenUI Cloud: verified on one model.** The OpenUI Cloud path (`GENAI_PROVIDER=openui-cloud`; gateway base URL `https://api.thesys.dev/v1/embed`, endpoint `POST .../chat/completions`) was exercised against the live gateway with `GENAI_MODEL=google/gemini-3.1-flash-lite-free` on 2026-11-22. The provider badge, `/api/provider`, and a streamed `/api/chat` response were checked in the dev server through chrome-devtools MCP: the dashboard cards and chart rendered, with no console errors or failed requests. The key was loaded by Nitro from a gitignored `.env`; no key value is stored in any repo file. Only this one model and provider path were tested — other models are not claimed as verified. The manual procedure is in [docs/openui-cloud-smoke.md](docs/openui-cloud-smoke.md).
+- No other hosted provider is claimed as tested.
 
 ## Alpha release checklist (in order)
 
-1. Bump `version` in all seven `packages/*/package.json` (currently 0.1.0).
+Set `OPENUI_TELEMETRY_DISABLED=1` before every command in this checklist (PowerShell: `$env:OPENUI_TELEMETRY_DISABLED='1'`).
+
+1. Bump `version` in all seven `packages/*/package.json` (currently 0.1.0-alpha.1).
 2. Add the release entry to the changelog (create or update a root `CHANGELOG.md`; no changelog file exists yet).
 3. `pnpm build` — exit 0.
 4. `pnpm verify:release` — `build + verify:packages + verify:consumer`; all steps must exit 0.
 5. Mock-mode smoke: start the playground with `GENAI_MOCK=1` (e.g. `GENAI_MOCK=1 OPENUI_TELEMETRY_DISABLED=1 pnpm dev`) — the Operations Center badge reads `mock · deterministic` and one prompt streams a program.
-6. Manual cloud smoke: per [docs/openui-cloud-smoke.md](docs/openui-cloud-smoke.md) — user creates the key, sets `apps/playground/.env` (gitignored; key never committed), runs `pnpm dev`, the badge reads `openui cloud · <model>`, and one prompt renders a streamed program. Optional but required before an OpenUI Cloud release claim.
+6. Manual cloud smoke: per [docs/openui-cloud-smoke.md](docs/openui-cloud-smoke.md) — user creates the key, sets `apps/playground/.env` (gitignored; key never committed), runs `pnpm dev`, the badge reads `openui cloud · <model>`, and one prompt renders a streamed program. Completed for 0.1.0-alpha.1 with `google/gemini-3.1-flash-lite-free`; repeat when changing models or provider paths.
 7. Obtain **explicit approval** from the team before publishing.
 8. Tag the release as `alpha` (e.g. `git tag alpha` on the release commit) and, if approved, publish with `npm publish --tag alpha` for the seven packages.
 

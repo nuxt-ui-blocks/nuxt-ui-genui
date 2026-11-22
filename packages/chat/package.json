@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/chat",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Framework-agnostic chat client for OpenUI Lang — no AI SDK required",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "chat", "vue", "ai", "streaming"],

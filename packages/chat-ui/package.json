@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/chat-ui",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Slot-complete Nuxt UI chat shell driven by @nuxt-ui-genui/chat — no transport, model or endpoint assumptions",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "chat", "nuxt-ui", "vue", "ai", "streaming"],

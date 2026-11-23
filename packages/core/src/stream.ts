@@ -101,40 +101,104 @@ export function extractDelta(payload: string): string {
   return extractChunk(payload).text
 }
 
-/** Split a text buffer into complete lines, keeping the remainder in `rest`. */
+/**
+ * Split a text buffer into complete lines, keeping the remainder in `rest`.
+ *
+ * The SSE spec permits LF, CRLF and standalone CR as line terminators, so all
+ * three are recognized here (the NDJSON parsers share this helper and simply
+ * ignore the extra terminators). A trailing `\r` is deliberately kept in
+ * `rest`: it may be the first half of a CRLF pair split across byte chunks and
+ * cannot be dispatched until the next chunk arrives.
+ */
 function takeLines(buffer: string): { lines: string[]; rest: string } {
   const lines: string[] = []
-  let index = buffer.indexOf('\n')
-  while (index >= 0) {
-    lines.push(buffer.slice(0, index).replace(/\r$/, ''))
-    buffer = buffer.slice(index + 1)
-    index = buffer.indexOf('\n')
+  let start = 0
+  for (let i = 0; i < buffer.length; i++) {
+    const char = buffer[i]
+    if (char === '\n') {
+      let end = i
+      if (end > start && buffer[end - 1] === '\r') end-- // CRLF pair
+      lines.push(buffer.slice(start, end))
+      start = i + 1
+    } else if (char === '\r') {
+      if (i === buffer.length - 1) break // possible CRLF split across chunks
+      lines.push(buffer.slice(start, i))
+      if (buffer[i + 1] === '\n') i++ // consume the LF half of CRLF
+      start = i + 1
+    }
   }
-  return { lines, rest: buffer }
+  return { lines, rest: buffer.slice(start) }
 }
 
-/** Parse an SSE body into text payloads (`data:` records). */
-export async function* parseSSEChunks(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+const SSE_DONE = '[DONE]'
+
+/**
+ * Fold one SSE line into the current event's `data` fields. Returns the
+ * assembled payload when a blank line terminates the event, otherwise
+ * `undefined`.
+ *
+ * SSE permits optional leading whitespace before a field, one optional space
+ * after the colon, comments (`: ...`), other fields (`id`, `event`, `retry`)
+ * and multiple `data` lines that must be joined with `\n`. The old line-based
+ * parser dropped all of those cases; this one follows the event framing.
+ */
+function consumeSSELine(line: string, dataLines: string[]): string | undefined {
+  // A blank line dispatches the current event (if it carried any data).
+  if (line.trim() === '') {
+    if (dataLines.length === 0) return undefined
+    const payload = dataLines.join('\n')
+    dataLines.length = 0
+    return payload
+  }
+
+  const trimmed = line.trimStart()
+  if (!trimmed || trimmed.startsWith(':')) return undefined // comment
+
+  const colon = trimmed.indexOf(':')
+  const field = colon === -1 ? trimmed : trimmed.slice(0, colon)
+  let value = colon === -1 ? '' : trimmed.slice(colon + 1)
+  if (value.startsWith(' ')) value = value.slice(1) // one optional leading space
+  if (field === 'data') dataLines.push(value)
+  return undefined
+}
+
+/**
+ * Read the assembled `data` payload of each complete SSE event. Multi-line
+ * `data` fields are joined with `\n`; a `[DONE]` event ends the stream.
+ * A final event without a trailing blank line is still emitted.
+ */
+async function* sseEventData(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   let buffer = ''
+  const dataLines: string[] = []
   for await (const chunk of readTextChunks(stream)) {
     buffer += chunk
     const { lines, rest } = takeLines(buffer)
     buffer = rest
     for (const line of lines) {
-      if (!line.startsWith('data:')) continue
-      const payload = line.slice(5).trim()
-      if (payload === '[DONE]') return
-      const delta = extractDelta(payload)
-      if (delta) yield delta
+      const payload = consumeSSELine(line, dataLines)
+      if (payload !== undefined) {
+        if (payload.trim() === SSE_DONE) return
+        yield payload
+      }
     }
   }
-  const last = buffer.trim()
-  if (last.startsWith('data:')) {
-    const payload = last.slice(5).trim()
-    if (payload && payload !== '[DONE]') {
-      const delta = extractDelta(payload)
-      if (delta) yield delta
-    }
+
+  const tail = buffer.replace(/\r$/, '')
+  if (tail) {
+    const payload = consumeSSELine(tail, dataLines)
+    if (payload !== undefined && payload.trim() !== SSE_DONE) yield payload
+  }
+  if (dataLines.length) {
+    const payload = dataLines.join('\n')
+    if (payload.trim() !== SSE_DONE) yield payload
+  }
+}
+
+/** Parse an SSE body into text payloads (assembled `data:` events). */
+export async function* parseSSEChunks(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  for await (const payload of sseEventData(stream)) {
+    const delta = extractDelta(payload)
+    if (delta) yield delta
   }
 }
 
@@ -156,26 +220,9 @@ export async function* parseNDJSONChunks(stream: ReadableStream<Uint8Array>): As
 
 /** Parse an SSE body into chunks, preserving snapshot vs delta. */
 export async function* parseSSEChunksDetailed(stream: ReadableStream<Uint8Array>): AsyncGenerator<GenUIStreamChunk> {
-  let buffer = ''
-  for await (const chunk of readTextChunks(stream)) {
-    buffer += chunk
-    const { lines, rest } = takeLines(buffer)
-    buffer = rest
-    for (const line of lines) {
-      if (!line.startsWith('data:')) continue
-      const payload = line.slice(5).trim()
-      if (payload === '[DONE]') return
-      const parsed = extractChunk(payload)
-      if (parsed.text) yield parsed
-    }
-  }
-  const last = buffer.trim()
-  if (last.startsWith('data:')) {
-    const payload = last.slice(5).trim()
-    if (payload && payload !== '[DONE]') {
-      const parsed = extractChunk(payload)
-      if (parsed.text) yield parsed
-    }
+  for await (const payload of sseEventData(stream)) {
+    const parsed = extractChunk(payload)
+    if (parsed.text) yield parsed
   }
 }
 

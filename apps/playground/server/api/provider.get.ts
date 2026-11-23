@@ -1,9 +1,14 @@
-import { defineEventHandler } from 'h3'
-import { resolveGenUILive, resolveGenUIMock } from '../utils/genai'
+import { GenUIProviderConfigError, resolveGenUIProvider } from '../utils/provider'
 
 /** Client-visible provider badge state. Never exposes the API key. */
 export default defineEventHandler(() => {
-  const mock = resolveGenUIMock(process.env)
-  const live = mock ? undefined : resolveGenUILive(process.env)
-  return { live: Boolean(live), mock, model: live?.model }
+  try {
+    const config = resolveGenUIProvider(process.env)
+    return { provider: config.provider, live: Boolean(config.live), mock: config.mock, model: config.live?.model }
+  } catch (error) {
+    if (error instanceof GenUIProviderConfigError) {
+      return { provider: 'mock', live: false, mock: false }
+    }
+    throw error
+  }
 })

@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/ai-sdk",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Optional Vercel AI SDK adapter for OpenUI Lang",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "ai-sdk", "vercel", "streaming", "adapter"],
@@ -10,7 +10,7 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./chat": { "types": "./dist/chat.d.ts", "import": "./dist/chat.js" }
   },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "scripts": { "build": "unbuild", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run" },
   "dependencies": { "@ai-sdk/openai": "^3.0.139", "ai": "^6.0.325" },
   "peerDependencies": { "vue": ">=3.5.0" },

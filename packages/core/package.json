@@ -1,12 +1,12 @@
 {
   "name": "@nuxt-ui-genui/core",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Server-safe core for the Nuxt GenUI generative-UI framework: library specs, prompts and stream helpers",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "ai", "streaming", "openui-lang"],
   "type": "module",
   "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "scripts": {
     "build": "unbuild",
     "typecheck": "tsc --noEmit -p tsconfig.json",

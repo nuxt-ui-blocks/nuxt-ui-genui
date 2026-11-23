@@ -1,13 +1,13 @@
 {
   "name": "@nuxt-ui-genui/server",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Framework-agnostic server helpers for OpenUI Lang — no AI SDK required",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "server", "tools", "streaming", "ai"],
   "type": "module",
   "main": "./dist/index.js",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "scripts": { "build": "unbuild", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run" },
   "dependencies": { "@nuxt-ui-genui/core": "workspace:*" },
   "devDependencies": {

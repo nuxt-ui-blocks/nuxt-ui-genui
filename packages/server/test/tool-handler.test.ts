@@ -53,12 +53,90 @@ describe('createGenUIToolHandler', () => {
     expect(response.status).toBe(400)
   })
 
-  it('reports an executor failure as 500 JSON', async () => {
+  it('does not leak raw executor errors and reports them via the hook', async () => {
+    const onUnexpectedError = vi.fn()
     const handler = createGenUIToolHandler({
-      tools: { boom: () => { throw new Error('tool exploded') } }
+      tools: { boom: () => { throw new Error('db password is hunter2 at /srv/prod') } },
+      onUnexpectedError
     })
     const response = await handler(request({ name: 'boom' }))
     expect(response.status).toBe(500)
-    expect(await response.json()).toEqual({ error: 'tool exploded' })
+    const body = await response.json() as { error: string; id: string }
+    expect(body.error).toBe('Tool execution failed.')
+    expect(body.id).toBeTruthy()
+    expect(body).not.toHaveProperty('db password is hunter2 at /srv/prod')
+    expect(JSON.stringify(body)).not.toContain('hunter2')
+
+    expect(onUnexpectedError).toHaveBeenCalledTimes(1)
+    const [thrown, context] = onUnexpectedError.mock.calls[0] as [Error, { id: string; tool: string; request: Request }]
+    expect(thrown.message).toBe('db password is hunter2 at /srv/prod')
+    expect(context.id).toBe(body.id)
+    expect(context.tool).toBe('boom')
+    expect(context.request).toBeInstanceOf(Request)
+  })
+
+  it('uses a mapped, user-safe error when the host supplies one', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { doomed: () => { throw new Error('row id 42 missing in table X') } },
+      mapError: (error) => error instanceof Error && error.message.includes('42')
+        ? { status: 404, body: { error: 'Record not found.' } }
+        : undefined
+    })
+    const response = await handler(request({ name: 'doomed' }))
+    expect(response.status).toBe(404)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'Record not found.' })
+    expect(JSON.stringify(body)).not.toContain('table X')
+  })
+
+  it('rejects oversized tool arguments with 413', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { echo: (args) => args },
+      limits: { maxArgsBytes: 32 }
+    })
+    const response = await handler(request({ name: 'echo', args: { blob: 'x'.repeat(100) } }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('arguments exceed')
+  })
+
+  it('measures argument size in UTF-8 bytes, not UTF-16 code units', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { echo: (args) => args },
+      limits: { maxArgsBytes: 40 }
+    })
+    // 20 CJK chars: 20 code units but 60 UTF-8 bytes; the serialized args are
+    // ~31 code units (would pass the old check) yet ~71 bytes (must be rejected).
+    const args = { blob: '\u4E2D'.repeat(20) }
+    expect(JSON.stringify(args).length).toBeLessThanOrEqual(40)
+    expect(new TextEncoder().encode(JSON.stringify(args)).byteLength).toBeGreaterThan(40)
+    const response = await handler(request({ name: 'echo', args }))
+    expect(response.status).toBe(413)
+    expect((await response.json() as { error: string }).error).toContain('arguments exceed')
+  })
+
+  it('returns a safe 500 even when mapError itself throws', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { boom: () => { throw new Error('secret detail') } },
+      mapError: () => { throw new Error('mapper crashed') }
+    })
+    const response = await handler(request({ name: 'boom' }))
+    expect(response.status).toBe(500)
+    const body = await response.json() as { error: string; id: string }
+    expect(body.error).toBe('Tool execution failed.')
+    expect(body.id).toBeTruthy()
+    expect(JSON.stringify(body)).not.toContain('secret')
+  })
+
+  it('returns a safe 500 even when the logging hook throws', async () => {
+    const handler = createGenUIToolHandler({
+      tools: { boom: () => { throw new Error('secret detail') } },
+      onUnexpectedError: () => { throw new Error('logger crashed') }
+    })
+    const response = await handler(request({ name: 'boom' }))
+    expect(response.status).toBe(500)
+    const body = await response.json() as { error: string; id: string }
+    expect(body.error).toBe('Tool execution failed.')
+    expect(body.id).toBeTruthy()
+    expect(JSON.stringify(body)).not.toContain('secret')
   })
 })

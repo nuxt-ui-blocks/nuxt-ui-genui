@@ -22,7 +22,7 @@ export interface CreateLibraryOptions {
    * Component names to include. Defaults to every built-in definition.
    * Names may refer to a built-in or to an entry in `extraComponents`.
    */
-  components?: readonly GenUIComponentName[]
+  components?: readonly (GenUIComponentName | (string & {}))[]
   /** Custom definitions appended after the selected built-ins. */
   extraComponents?: readonly GenUIComponentDef[]
   /**
@@ -49,6 +49,18 @@ export function createNuxtUILibrary(options: CreateLibraryOptions = {}) {
     extraCardChildren = []
   } = options
 
+  // Reject genuinely conflicting custom definitions up front: selecting one by
+  // name must not silently drop a second definition with the same name.
+  const builtInNames = new Set(ALL_DEFS.map(nameOf))
+  const extraNames = new Set<string>()
+  for (const def of extraComponents) {
+    const name = nameOf(def)
+    if (extraNames.has(name) || builtInNames.has(name)) {
+      throw new GenUILibraryError('DUPLICATE_COMPONENT', `Duplicate component: ${name}`)
+    }
+    extraNames.add(name)
+  }
+
   const available = [...ALL_DEFS, ...extraComponents]
 
   const selected = components
@@ -73,7 +85,15 @@ export function createNuxtUILibrary(options: CreateLibraryOptions = {}) {
     ? selected.map((def) => (nameOf(def) === 'Card' ? createCardDef(extraCardChildren, baseChildren) : def))
     : selected
 
-  const withRenderers = [...resolved, ...extraComponents].map((def) => {
+  // A custom component selected by name is already in `resolved`; appending it
+  // again would make createGenUILibrary reject it as a duplicate.
+  const resolvedNames = new Set(resolved.map(nameOf))
+  const definitions = [
+    ...resolved,
+    ...extraComponents.filter((def) => !resolvedNames.has(nameOf(def)))
+  ]
+
+  const withRenderers = definitions.map((def) => {
     const renderer = renderers[nameOf(def)]
     // Copy the definition before attaching a client renderer — never mutate the shared ALL_DEFS objects.
     return renderer ? { ...(def as object), component: renderer } as never : def

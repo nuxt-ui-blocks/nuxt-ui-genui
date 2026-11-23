@@ -1,6 +1,6 @@
 {
   "name": "@nuxt-ui-genui/nuxt",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Nuxt module and Vue plugin for the Nuxt GenUI generative-UI framework",
   "license": "MIT",
   "keywords": ["openui", "generative-ui", "nuxt", "nuxt-ui", "vue", "module", "ai"],
@@ -21,7 +21,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "nuxt-module-build build",
@@ -36,7 +37,7 @@
     "zod": "^4.0.0"
   },
   "peerDependencies": {
-    "nuxt": ">=4.0.0",
+    "nuxt": ">=4.1.0",
     "vue": ">=3.5.0"
   },
   "peerDependenciesMeta": {

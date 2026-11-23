@@ -16,7 +16,9 @@
   "devDependencies": { "typescript": "^5.6.0" },
   "pnpm": {
     "overrides": {
-      "cssnano": "7.1.9"
+      "cssnano": "7.1.9",
+      "jsdom": "27.0.0",
+      "unifont": "0.7.4"
     }
   }
 }
